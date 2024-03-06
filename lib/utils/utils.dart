@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 typedef JsonMap = Map<String, dynamic>;
 
+typedef Proc1<T> = void Function(T);
+
 String generateRandomStr(int length) {
   return List.generate(length, (_) => _randomChar()).join();
 }

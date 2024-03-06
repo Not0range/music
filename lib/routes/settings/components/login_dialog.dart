@@ -32,24 +32,30 @@ class _LoginDialogState extends State<LoginDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(widget.title),
-        TextField(
-            onChanged: _setLogin,
-            decoration: InputDecoration(
-                border: const UnderlineInputBorder(),
-                hintText: AppLocalizations.of(context).login)),
-        TextField(
-            onChanged: _setPassword,
-            obscureText: true,
-            decoration: InputDecoration(
-                border: const UnderlineInputBorder(),
-                hintText: AppLocalizations.of(context).password)),
-        OutlinedButton(
-            onPressed: _submit,
-            child: Text(AppLocalizations.of(context).signIn))
-      ],
+    return Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.title),
+            TextField(
+                onChanged: _setLogin,
+                decoration: InputDecoration(
+                    border: const UnderlineInputBorder(),
+                    hintText: AppLocalizations.of(context).login)),
+            TextField(
+                onChanged: _setPassword,
+                obscureText: true,
+                decoration: InputDecoration(
+                    border: const UnderlineInputBorder(),
+                    hintText: AppLocalizations.of(context).password)),
+            OutlinedButton(
+                onPressed: _submit,
+                child: Text(AppLocalizations.of(context).signIn))
+          ],
+        ),
+      ),
     );
   }
 }

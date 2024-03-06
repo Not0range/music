@@ -54,49 +54,54 @@ class _TabsRouteState extends State<TabsRoute> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(onPressed: _openSettings, icon: const Icon(Icons.settings))
-        ],
-      ),
-      bottomSheet: MiniPlayer(stream: _stream),
-      bottomNavigationBar: SizedBox(
-        height: toolBarHeight,
-        child: TabBar(tabs: [
-          Tab(
-            icon: const Icon(Icons.home),
-            text: AppLocalizations.of(context).home,
-            iconMargin: const EdgeInsets.symmetric(vertical: 5),
-          ),
-          Tab(
-            icon: const Icon(Icons.search),
-            text: AppLocalizations.of(context).search,
-            iconMargin: const EdgeInsets.symmetric(vertical: 5),
-          ),
-          Tab(
-            icon: const Icon(Icons.library_music_outlined),
-            text: AppLocalizations.of(context).mediaLib,
-            iconMargin: const EdgeInsets.symmetric(vertical: 5),
-          ),
-        ], controller: _controller),
-      ),
-      body: TabBarView(
-        controller: _controller,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          Navigator(
-              onGenerateRoute: (_) =>
-                  MaterialPageRoute(builder: (ctx) => const HomeRoute())),
-          Navigator(
-              onGenerateRoute: (_) =>
-                  MaterialPageRoute(builder: (ctx) => const SearchRoute())),
-          Navigator(
-              onGenerateRoute: (_) =>
-                  MaterialPageRoute(builder: (ctx) => const MediaRoute())),
-        ],
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          actions: [
+            IconButton(
+                onPressed: _openSettings, icon: const Icon(Icons.settings))
+          ],
+        ),
+        bottomSheet: MiniPlayer(stream: _stream),
+        bottomNavigationBar: SizedBox(
+          height: toolBarHeight,
+          child: TabBar(tabs: [
+            Tab(
+              icon: const Icon(Icons.home),
+              text: AppLocalizations.of(context).home,
+              iconMargin: const EdgeInsets.symmetric(vertical: 5),
+            ),
+            Tab(
+              icon: const Icon(Icons.search),
+              text: AppLocalizations.of(context).search,
+              iconMargin: const EdgeInsets.symmetric(vertical: 5),
+            ),
+            Tab(
+              icon: const Icon(Icons.library_music_outlined),
+              text: AppLocalizations.of(context).mediaLib,
+              iconMargin: const EdgeInsets.symmetric(vertical: 5),
+            ),
+          ], controller: _controller),
+        ),
+        body: TabBarView(
+          controller: _controller,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            Navigator(
+                onGenerateRoute: (_) =>
+                    MaterialPageRoute(builder: (ctx) => const HomeRoute())),
+            Navigator(
+                onGenerateRoute: (_) =>
+                    MaterialPageRoute(builder: (ctx) => const SearchRoute())),
+            Navigator(
+                onGenerateRoute: (_) =>
+                    MaterialPageRoute(builder: (ctx) => const MediaRoute())),
+          ],
+        ),
       ),
     );
   }

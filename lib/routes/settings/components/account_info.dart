@@ -22,31 +22,38 @@ class AccountInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      height: 60,
       child: Row(
         children: [
           Padding(
             padding: const EdgeInsets.only(right: 5),
-            child: Icon(icon ?? Icons.person),
+            child: Icon(
+              icon ?? Icons.person,
+              size: 30,
+            ),
           ),
           if (avatar != null)
             Padding(
               padding: const EdgeInsets.only(right: 5),
               child: AspectRatio(
                 aspectRatio: 1,
-                child: NetImage(
-                    img: avatar,
-                    placeholder: Container(
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                          color: Colors.grey, shape: BoxShape.circle),
-                      child: const Icon(Icons.person),
-                    )),
+                child: ClipOval(
+                  child: NetImage(
+                      img: avatar,
+                      placeholder: Container(
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                            color: Colors.grey, shape: BoxShape.circle),
+                        child: const Icon(Icons.person),
+                      )),
+                ),
               ),
             ),
           Expanded(
               child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [Text(name ?? ''), Text(id ?? '')],
           )),

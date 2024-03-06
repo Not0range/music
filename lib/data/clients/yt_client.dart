@@ -14,6 +14,8 @@ class YtClient {
   ));
 
   YtClient() {
+    _dio.interceptors
+        .add(LogInterceptor(requestBody: true, responseBody: true));
     (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
       final client = HttpClient();
       client.userAgent = '';

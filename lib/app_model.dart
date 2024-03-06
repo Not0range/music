@@ -11,6 +11,7 @@ class AppModel extends ChangeNotifier {
   String? _vkToken;
   String? get vkToken => _vkToken;
   set vkToken(String? value) {
+    if (_vkToken == value) return;
     _vkToken = value;
     notifyListeners();
   }
@@ -18,6 +19,7 @@ class AppModel extends ChangeNotifier {
   String? _ytToken;
   String? get ytToken => _ytToken;
   set ytToken(String? value) {
+    if (_ytToken == value) return;
     _ytToken = value;
     notifyListeners();
   }
@@ -27,6 +29,7 @@ class AppModel extends ChangeNotifier {
   set vkProfile(ProfileVk? value) {
     if (_vkProfile == value) return;
     _vkProfile = value;
+    notifyListeners();
   }
 
   ProfileYt? _ytProfile;
@@ -34,6 +37,7 @@ class AppModel extends ChangeNotifier {
   set ytProfile(ProfileYt? value) {
     if (_ytProfile == value) return;
     _ytProfile = value;
+    notifyListeners();
   }
 }
 
