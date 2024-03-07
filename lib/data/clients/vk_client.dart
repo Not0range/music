@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
+import 'package:music/data/models/vk/music_vk.dart';
 import 'package:music/data/models/vk/profile_vk.dart';
 import 'package:music/data/response.dart';
 import 'package:music/utils/constants.dart';
@@ -58,6 +59,30 @@ class VkClient {
             queryParameters: {'access_token': _token(context)}))
         .data;
     final res = ResponseVk.fromJson(data, (json) => ProfileVk.fromJson(json));
+    if (res.error != null) throw res.error!.message;
+    return res.response!;
+  }
+
+  Future<Iterable<MusicVk>> searchMusic(
+      BuildContext context, String query) async {
+    final data = (await _dio.get('audio.getCatalog', queryParameters: {
+      'access_token': _token(context),
+      'ref': 'search',
+      'query': query
+    }))
+        .data;
+    final res = ResponseVk.fromJson(
+        data, (json) => (json as List).map((e) => MusicVk.fromJson(e)));
+    if (res.error != null) throw res.error!.message;
+    return res.response!;
+  }
+
+  Future<Iterable<MusicVk>> getMyMusic(BuildContext context) async {
+    final data = (await _dio.get('audio.getFavorites',
+            queryParameters: {'access_token': _token(context)}))
+        .data;
+    final res = ResponseVk.fromJson(
+        data, (json) => (json as List).map((e) => MusicVk.fromJson(e)));
     if (res.error != null) throw res.error!.message;
     return res.response!;
   }

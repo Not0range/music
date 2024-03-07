@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:music/components/dismiss_container.dart';
 import 'package:music/components/mini_player.dart';
 import 'package:music/routes/home/home_route.dart';
 import 'package:music/routes/media/media_route.dart';
@@ -29,6 +30,7 @@ class _TabsRouteState extends State<TabsRoute> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _controller.addListener(() => setState(() {}));
     Future.delayed(Duration.zero, () {
       Overlay.of(context).insert(_playerOverlay);
     });
@@ -52,55 +54,70 @@ class _TabsRouteState extends State<TabsRoute> with TickerProviderStateMixin {
         builder: (ctx) => const SettingsRoute());
   }
 
+  String get _title {
+    final locale = AppLocalizations.of(context);
+    if (_controller.index == 0) {
+      return locale.home;
+    } else if (_controller.index == 2) {
+      return locale.mediaLib;
+    }
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
       left: false,
       right: false,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          actions: [
-            IconButton(
-                onPressed: _openSettings, icon: const Icon(Icons.settings))
-          ],
-        ),
-        bottomSheet: MiniPlayer(stream: _stream),
-        bottomNavigationBar: SizedBox(
-          height: toolBarHeight,
-          child: TabBar(tabs: [
-            Tab(
-              icon: const Icon(Icons.home),
-              text: AppLocalizations.of(context).home,
-              iconMargin: const EdgeInsets.symmetric(vertical: 5),
-            ),
-            Tab(
-              icon: const Icon(Icons.search),
-              text: AppLocalizations.of(context).search,
-              iconMargin: const EdgeInsets.symmetric(vertical: 5),
-            ),
-            Tab(
-              icon: const Icon(Icons.library_music_outlined),
-              text: AppLocalizations.of(context).mediaLib,
-              iconMargin: const EdgeInsets.symmetric(vertical: 5),
-            ),
-          ], controller: _controller),
-        ),
-        body: TabBarView(
-          controller: _controller,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            Navigator(
-                onGenerateRoute: (_) =>
-                    MaterialPageRoute(builder: (ctx) => const HomeRoute())),
-            Navigator(
-                onGenerateRoute: (_) =>
-                    MaterialPageRoute(builder: (ctx) => const SearchRoute())),
-            Navigator(
-                onGenerateRoute: (_) =>
-                    MaterialPageRoute(builder: (ctx) => const MediaRoute())),
-          ],
+      child: DismissContainer(
+        child: Scaffold(
+          appBar: _controller.index != 1
+              ? AppBar(
+                  title: Text(_title),
+                  actions: [
+                    IconButton(
+                        onPressed: _openSettings,
+                        icon: const Icon(Icons.settings))
+                  ],
+                )
+              : null,
+          bottomSheet: MiniPlayer(stream: _stream),
+          bottomNavigationBar: SizedBox(
+            height: toolBarHeight,
+            child: TabBar(tabs: [
+              Tab(
+                icon: const Icon(Icons.home),
+                text: AppLocalizations.of(context).home,
+                iconMargin: const EdgeInsets.symmetric(vertical: 5),
+              ),
+              Tab(
+                icon: const Icon(Icons.search),
+                text: AppLocalizations.of(context).search,
+                iconMargin: const EdgeInsets.symmetric(vertical: 5),
+              ),
+              Tab(
+                icon: const Icon(Icons.library_music_outlined),
+                text: AppLocalizations.of(context).mediaLib,
+                iconMargin: const EdgeInsets.symmetric(vertical: 5),
+              ),
+            ], controller: _controller),
+          ),
+          body: TabBarView(
+            controller: _controller,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              Navigator(
+                  onGenerateRoute: (_) =>
+                      MaterialPageRoute(builder: (ctx) => const HomeRoute())),
+              Navigator(
+                  onGenerateRoute: (_) =>
+                      MaterialPageRoute(builder: (ctx) => const SearchRoute())),
+              Navigator(
+                  onGenerateRoute: (_) =>
+                      MaterialPageRoute(builder: (ctx) => const MediaRoute())),
+            ],
+          ),
         ),
       ),
     );
