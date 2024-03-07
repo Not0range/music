@@ -3,19 +3,21 @@ import 'package:flutter/material.dart';
 
 class NetImage extends StatelessWidget {
   final String? img;
-  final Widget placeholder;
+  final Widget? placeholder;
 
-  const NetImage({super.key, this.img, required this.placeholder});
+  const NetImage({super.key, this.img, this.placeholder});
 
   @override
   Widget build(BuildContext context) {
-    if (img == null || img!.isEmpty) return placeholder;
+    if (img == null || img!.isEmpty) {
+      return placeholder ?? const SizedBox.shrink();
+    }
 
     return CachedNetworkImage(
       imageUrl: img!,
       fit: BoxFit.contain,
-      placeholder: (ctx, s) => placeholder,
-      errorWidget: (ctx, s, e) => placeholder,
+      placeholder: (ctx, s) => placeholder ?? const SizedBox.shrink(),
+      errorWidget: (ctx, s, e) => placeholder ?? const SizedBox.shrink(),
     );
   }
 }
