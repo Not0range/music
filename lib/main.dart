@@ -54,6 +54,7 @@ class _MainAppState extends State<MainApp> {
           AVAudioSessionOptions.allowBluetoothA2DP
         ])));
 
+    player.setReleaseMode(ReleaseMode.stop);
     Future.delayed(Duration.zero, _listeners);
   }
 
@@ -86,9 +87,16 @@ class _MainAppState extends State<MainApp> {
         child: MaterialApp(
           title: 'Music',
           theme: ThemeData(
+            appBarTheme: const AppBarTheme(centerTitle: false),
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
             useMaterial3: true,
           ),
+          darkTheme: ThemeData(
+              appBarTheme: const AppBarTheme(centerTitle: false),
+              colorScheme: ColorScheme.fromSeed(
+                  seedColor: Colors.deepPurple, brightness: Brightness.dark),
+              useMaterial3: true,
+              brightness: Brightness.dark),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: const TabsRoute(),
