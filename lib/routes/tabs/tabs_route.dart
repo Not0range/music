@@ -1,17 +1,17 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:music/app_model.dart';
 import 'package:music/components/dismiss_container.dart';
-import 'package:music/components/mini_player.dart';
+import 'package:music/data/models/vk/profile_vk.dart';
 import 'package:music/routes/home/home_route.dart';
 import 'package:music/routes/media/media_route.dart';
-import 'package:music/routes/player/player_route.dart';
 import 'package:music/routes/search/search_route.dart';
-
+import 'package:music/routes/subscriptions/subscriptions_route.dart';
+import 'package:music/routes/tabs/components/bottom_bar_player.dart';
+import 'package:music/utils/routes.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:music/routes/settings/settings_route.dart';
-import 'package:music/utils/constants.dart';
-import 'package:music/utils/scroll_command.dart';
+
+import 'tabs_presenter.dart';
 
 class TabsRoute extends StatefulWidget {
   const TabsRoute({super.key});
@@ -20,48 +20,22 @@ class TabsRoute extends StatefulWidget {
   State<StatefulWidget> createState() => _TabsRouteState();
 }
 
-class _TabsRouteState extends State<TabsRoute> with TickerProviderStateMixin {
+class _TabsRouteState extends TabsContract
+    with TickerProviderStateMixin, TabsPresenter {
   late final _controller = TabController(length: 3, vsync: this);
-
-  final _stream = StreamController<ScrollCommand>();
-  late final _playerOverlay =
-      OverlayEntry(builder: (ctx) => PlayerRoute(stream: _stream.stream));
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() => setState(() {}));
     Future.delayed(Duration.zero, () {
-      Overlay.of(context).insert(_playerOverlay);
+      getVkProfile();
     });
   }
 
   @override
   void dispose() {
-    _playerOverlay.remove();
-    _playerOverlay.dispose();
     _controller.dispose();
     super.dispose();
-  }
-
-  void _openSettings() {
-    showModalBottomSheet(
-        context: context,
-        useRootNavigator: true,
-        isScrollControlled: true,
-        clipBehavior: Clip.hardEdge,
-        showDragHandle: true,
-        builder: (ctx) => const SettingsRoute());
-  }
-
-  String get _title {
-    final locale = AppLocalizations.of(context);
-    if (_controller.index == 0) {
-      return locale.home;
-    } else if (_controller.index == 2) {
-      return locale.mediaLib;
-    }
-    return '';
   }
 
   @override
@@ -72,37 +46,8 @@ class _TabsRouteState extends State<TabsRoute> with TickerProviderStateMixin {
       right: false,
       child: DismissContainer(
         child: Scaffold(
-          appBar: _controller.index != 1
-              ? AppBar(
-                  title: Text(_title),
-                  actions: [
-                    IconButton(
-                        onPressed: _openSettings,
-                        icon: const Icon(Icons.settings))
-                  ],
-                )
-              : null,
-          bottomSheet: MiniPlayer(stream: _stream),
-          bottomNavigationBar: SizedBox(
-            height: toolBarHeight,
-            child: TabBar(tabs: [
-              Tab(
-                icon: const Icon(Icons.home),
-                text: AppLocalizations.of(context).home,
-                iconMargin: const EdgeInsets.symmetric(vertical: 5),
-              ),
-              Tab(
-                icon: const Icon(Icons.search),
-                text: AppLocalizations.of(context).search,
-                iconMargin: const EdgeInsets.symmetric(vertical: 5),
-              ),
-              Tab(
-                icon: const Icon(Icons.library_music_outlined),
-                text: AppLocalizations.of(context).mediaLib,
-                iconMargin: const EdgeInsets.symmetric(vertical: 5),
-              ),
-            ], controller: _controller),
-          ),
+          resizeToAvoidBottomInset: false,
+          bottomNavigationBar: BottomBarPlayer(controller: _controller),
           body: TabBarView(
             controller: _controller,
             physics: const NeverScrollableScrollPhysics(),
@@ -114,11 +59,72 @@ class _TabsRouteState extends State<TabsRoute> with TickerProviderStateMixin {
                   onGenerateRoute: (_) =>
                       MaterialPageRoute(builder: (ctx) => const SearchRoute())),
               Navigator(
-                  onGenerateRoute: (_) =>
-                      MaterialPageRoute(builder: (ctx) => const MediaRoute())),
+                  onGenerateRoute: (_) => MaterialPageRoute(
+                      builder: (ctx) => const LibraryRoute())),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  @override
+  void onSuccessVk(ProfileVk profile) {
+    Provider.of<AppModel>(context, listen: false).vkProfile = profile;
+  }
+
+  @override
+  void onErrorVk(String error) {
+    // TODO: implement onErrorVk
+  }
+}
+
+class LibraryRoute extends StatefulWidget {
+  const LibraryRoute({super.key});
+
+  @override
+  State<StatefulWidget> createState() => _LibraryRouteState();
+}
+
+class _LibraryRouteState extends State<LibraryRoute>
+    with SingleTickerProviderStateMixin {
+  late final _controller = TabController(length: 2, vsync: this);
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context).mediaLib),
+        actions: [
+          IconButton(
+              onPressed: () => openSettings(context),
+              icon: const Icon(Icons.settings))
+        ],
+      ),
+      body: Column(
+        children: [
+          TabBar.secondary(controller: _controller, tabs: [
+            Tab(text: AppLocalizations.of(context).playlists),
+            Tab(text: AppLocalizations.of(context).subscriptions)
+          ]),
+          Expanded(
+            child: TabBarView(
+                controller: _controller,
+                children: const [MediaRoute(), SubscriptionsRoute()]),
+          ),
+        ],
       ),
     );
   }

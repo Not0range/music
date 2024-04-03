@@ -1,43 +1,43 @@
-import 'dart:async';
-
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/net_image.dart';
+import 'package:music/components/player.dart';
 import 'package:music/routes/player/components/progress_bar.dart';
-import 'package:music/utils/scroll_command.dart';
+import 'package:music/utils/service.dart';
 import 'package:provider/provider.dart';
 
-class PlayerRoute extends StatefulWidget {
-  final Stream<ScrollCommand> stream;
+import 'player_presenter.dart';
 
-  const PlayerRoute({super.key, required this.stream});
+class PlayerRoute extends StatefulWidget {
+  final double position;
+
+  const PlayerRoute({super.key, this.position = 0});
 
   @override
   State<StatefulWidget> createState() => _PlayerRouteState();
 }
 
-class _PlayerRouteState extends State<PlayerRoute> {
+class _PlayerRouteState extends PlayerContract with PlayerPresenter {
   final _controller = DraggableScrollableController();
-  late StreamSubscription _subscription;
 
   @override
-  void initState() {
-    super.initState();
-    widget.stream.listen(_scrollListener);
+  void didUpdateWidget(covariant PlayerRoute oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _scrollListener(widget.position);
   }
 
   @override
   void dispose() {
-    _subscription.cancel();
     _controller.dispose();
     super.dispose();
   }
 
-  void _scrollListener(ScrollCommand com) {
+  void _scrollListener(double position) {
     if (!_controller.isAttached) return;
 
-    final f = _controller.pixelsToSize(com.distance).clamp(0, 1).toDouble();
-    if (com.animated) {
+    final f = _controller.pixelsToSize(position).clamp(0, 1).toDouble();
+    if (position <= 0 || position.isInfinite) {
       _controller.animateTo(f,
           duration: const Duration(milliseconds: 200), curve: Curves.linear);
     } else {
@@ -46,8 +46,11 @@ class _PlayerRouteState extends State<PlayerRoute> {
   }
 
   Widget _builder(BuildContext context, ScrollController controller) {
-    return Scaffold(
-      body: SingleChildScrollView(
+    return Container(
+      decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          boxShadow: const [BoxShadow(blurRadius: 5)]),
+      child: SingleChildScrollView(
         controller: controller,
         child: Consumer<PlayerModel>(builder: _consumerBuilder),
       ),
@@ -58,6 +61,9 @@ class _PlayerRouteState extends State<PlayerRoute> {
     final size = MediaQuery.sizeOf(context);
     final p = state.position.inSeconds;
     final d = state.duration.inSeconds;
+
+    final scheme = Theme.of(context).colorScheme;
+    final color = scheme.primary;
 
     return Column(children: [
       SizedBox(
@@ -77,7 +83,7 @@ class _PlayerRouteState extends State<PlayerRoute> {
                           color: Colors.grey,
                           child: Container(
                               alignment: Alignment.center,
-                              color: Colors.grey,
+                              color: scheme.inversePrimary,
                               child: const Icon(
                                 Icons.music_note,
                                 size: 72,
@@ -87,34 +93,71 @@ class _PlayerRouteState extends State<PlayerRoute> {
                 ),
               ),
             ),
-            Row(
-              children: [
-                Expanded(
-                    child: Column(
-                  children: [Text(state.title), Text(state.artist)],
-                )),
-                IconButton(onPressed: () {}, icon: Icon(Icons.favorite_border))
-              ],
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  IconButton(
+                      iconSize: 36,
+                      color: state.shuffle ? color : null,
+                      onPressed: () => _toggleShuffle(state),
+                      icon: const Icon(Icons.shuffle)),
+                  IconButton(
+                      iconSize: 36,
+                      onPressed: () {},
+                      icon: const Icon(Icons.fast_rewind)),
+                  IconButton(
+                      iconSize: 36,
+                      onPressed: _playPause,
+                      icon:
+                          Icon(state.playing ? Icons.pause : Icons.play_arrow)),
+                  IconButton(
+                      iconSize: 36,
+                      onPressed: () {},
+                      icon: const Icon(Icons.fast_forward)),
+                  IconButton(
+                      iconSize: 36,
+                      color: state.repeat ? color : null,
+                      onPressed: () => _toggleRepeat(state),
+                      icon: const Icon(Icons.repeat)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 20, right: 10, bottom: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                      child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [Text(state.title), Text(state.artist)],
+                  )),
+                  IconButton(
+                      iconSize: 36,
+                      color: state.favorite.isNotEmpty ? color : null,
+                      onPressed: () => _toggleFavorite(
+                          state.service,
+                          state.isFavorite
+                              ? FavoriteType.include
+                              : state.favorite == 'restore'
+                                  ? FavoriteType.restore
+                                  : FavoriteType.exclude,
+                          state.isFavorite ? state.favorite : state.id),
+                      icon: Icon(state.isFavorite
+                          ? Icons.favorite
+                          : Icons.favorite_border))
+                ],
+              ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: ProgressBar(
                 max: d,
                 value: p,
+                onSeeking: _seek,
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                IconButton(
-                    onPressed: () {}, icon: const Icon(Icons.fast_rewind)),
-                IconButton(
-                    onPressed: () {},
-                    icon: Icon(state.playing ? Icons.pause : Icons.play_arrow)),
-                IconButton(
-                    onPressed: () {}, icon: const Icon(Icons.fast_forward)),
-              ],
-            )
           ],
         ),
       )
@@ -132,4 +175,70 @@ class _PlayerRouteState extends State<PlayerRoute> {
         shouldCloseOnMinExtent: false,
         builder: _builder);
   }
+
+  void _toggleFavorite(Service? service, FavoriteType favorite, String? id) {
+    if (id == null) return;
+
+    final ids = id.split('_').map((e) => int.parse(e)).toList();
+    if (service == Service.vk) {
+      if (favorite == FavoriteType.include) {
+        final id = Provider.of<AppModel>(context, listen: false).vkProfile?.id;
+        if (id != null) removeVk(id, ids[1]);
+      } else if (favorite == FavoriteType.exclude) {
+        addVk(ids[0], ids[1]);
+      } else {
+        restoreVk(ids[0], ids[1]);
+      }
+    }
+  }
+
+  void _playPause() {
+    final player = Player.of(context);
+    if (player.state != PlayerState.playing) {
+      player.resume();
+    } else {
+      player.pause();
+    }
+  }
+
+  void _seek(int position) {
+    Player.of(context).seek(Duration(seconds: position));
+  }
+
+  void _toggleShuffle(PlayerModel state) {
+    state.shuffle = !state.shuffle;
+    //TODO
+  }
+
+  void _toggleRepeat(PlayerModel state) {
+    state.repeat = !state.repeat;
+    final player = Player.of(context);
+    if (state.repeat) {
+      player.setReleaseMode(ReleaseMode.loop);
+    } else {
+      player.setReleaseMode(ReleaseMode.stop);
+    }
+  }
+
+  @override
+  void onFavoriteSuccess([int? newId]) {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    if (newId != null) {
+      final owner = Provider.of<AppModel>(context, listen: false).vkProfile!.id;
+      state.favorite = '${owner}_$newId';
+    } else {
+      if (state.favorite == state.id) {
+        state.favorite = 'restore';
+      } else {
+        state.favorite = '';
+      }
+    }
+  }
+
+  @override
+  void onError(String error) {
+    // TODO: implement onError
+  }
 }
+
+enum FavoriteType { include, exclude, restore }

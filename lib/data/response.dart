@@ -6,7 +6,7 @@ class ResponseVk<T> {
 
   ResponseVk(this.response, this.error);
 
-  factory ResponseVk.fromJson(JsonMap json, T Function(JsonMap) builder) {
+  factory ResponseVk.fromJson(JsonMap json, T Function(dynamic) builder) {
     return ResponseVk(
         json['response'] != null ? builder(json['response']) : null,
         json['error'] != null ? VkErrorObject.fromJson(json['error']) : null);

@@ -22,11 +22,29 @@ abstract class IMusic {
   MusicInfo get info;
 }
 
+abstract class IPlaylist {
+  @protected
+  PlaylistInfo? cacheInfo;
+  PlaylistInfo get info;
+}
+
 class MusicInfo {
+  final String id;
   final String artist;
   final String title;
   final String url;
   final int duration;
+  final String? coverSmall;
+  final String? coverBig;
 
-  MusicInfo(this.artist, this.title, this.url, this.duration);
+  MusicInfo(this.id, this.artist, this.title, this.url, this.duration,
+      this.coverSmall, this.coverBig);
+}
+
+class PlaylistInfo {
+  final String id;
+  final String title;
+  final String cover;
+
+  PlaylistInfo(this.id, this.title, this.cover);
 }

@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/data/models/vk/music_vk.dart';
-import 'package:music/routes/search/components/result_category.dart';
+import 'package:music/components/result_category.dart';
+import 'package:music/utils/service.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'components/search_bar.dart';
 import 'search_presenter.dart';
@@ -16,7 +18,8 @@ class SearchRoute extends StatefulWidget {
   State<StatefulWidget> createState() => _SearchRouteState();
 }
 
-class _SearchRouteState extends SearchContract with SearchPresenter {
+class _SearchRouteState extends SearchContract
+    with SearchPresenter, AutomaticKeepAliveClientMixin {
   Timer? _delay;
 
   Iterable<MusicVk> _resultVk = [];
@@ -46,14 +49,25 @@ class _SearchRouteState extends SearchContract with SearchPresenter {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       appBar: AppBar(
           automaticallyImplyLeading: false,
           title: SearchAppBar(onChanged: _search)),
       body: ListView(
         children: [
-          ResultCategory(title: 'VK', items: _resultVk),
-          ResultCategory(title: 'YT', items: _resultYt),
+          ResultCategory(
+            title: AppLocalizations.of(context).vk,
+            items: _resultVk,
+            type: Service.vk,
+            forwardTitle: false,
+          ),
+          ResultCategory(
+            title: AppLocalizations.of(context).yt,
+            items: _resultYt,
+            type: Service.youtube,
+            forwardTitle: false,
+          ),
         ],
       ),
     );
@@ -72,4 +86,7 @@ class _SearchRouteState extends SearchContract with SearchPresenter {
   void onError(String error) {
     // TODO: implement onError
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }

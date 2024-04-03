@@ -55,7 +55,19 @@ class AccountInfo extends StatelessWidget {
               child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [Text(name ?? ''), Text(id ?? '')],
+            children: [
+              Text(
+                name ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                id ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              )
+            ],
           )),
           Visibility(
             visible: !loading,

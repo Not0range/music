@@ -1,20 +1,18 @@
-import 'dart:async';
-
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/net_image.dart';
 import 'package:music/components/player.dart';
 import 'package:music/utils/constants.dart';
-import 'package:music/utils/scroll_command.dart';
+import 'package:music/utils/utils.dart';
 import 'package:provider/provider.dart';
 
 const _lastFactor = 200;
 
 class MiniPlayer extends StatefulWidget {
-  final StreamController<ScrollCommand> stream;
+  final Proc1<double>? onChangePosition;
 
-  const MiniPlayer({super.key, required this.stream});
+  const MiniPlayer({super.key, this.onChangePosition});
 
   @override
   State<StatefulWidget> createState() => _MiniPlayerState();
@@ -25,7 +23,7 @@ class _MiniPlayerState extends State<MiniPlayer> {
   double? _last;
 
   void _expand() {
-    widget.stream.add(ScrollCommand(double.maxFinite, true));
+    widget.onChangePosition?.call(double.infinity);
   }
 
   void _playPause() {
@@ -42,7 +40,10 @@ class _MiniPlayerState extends State<MiniPlayer> {
     final d = state.duration.inSeconds;
     final f = d > 0 ? p / d : 0.0;
 
+    final scheme = Theme.of(context).colorScheme;
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: Row(
@@ -53,7 +54,7 @@ class _MiniPlayerState extends State<MiniPlayer> {
                   img: state.img,
                   placeholder: Container(
                       alignment: Alignment.center,
-                      color: Colors.grey,
+                      color: scheme.inversePrimary,
                       child: const Icon(Icons.music_note)),
                 ),
               ),
@@ -67,7 +68,7 @@ class _MiniPlayerState extends State<MiniPlayer> {
         FractionallySizedBox(
           alignment: Alignment.centerLeft,
           widthFactor: f,
-          child: ColoredBox(color: Theme.of(context).primaryColor),
+          child: Container(height: 2, color: scheme.primary),
         )
       ],
     );
@@ -81,12 +82,12 @@ class _MiniPlayerState extends State<MiniPlayer> {
     if (_start == null) return;
 
     _last = _start! - details.globalPosition.dy;
-    widget.stream.add(ScrollCommand(_last!, false));
+    widget.onChangePosition?.call(_last!);
   }
 
   void _dragEnd([DragEndDetails? details]) {
-    final f = _last == null || _last! < _lastFactor ? 0.0 : double.maxFinite;
-    widget.stream.add(ScrollCommand(f, true));
+    final f = _last == null || _last! < _lastFactor ? 0.0 : double.infinity;
+    widget.onChangePosition?.call(f);
     _start = null;
     _last = null;
   }

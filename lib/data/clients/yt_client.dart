@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
+import 'package:music/utils/dio_logger.dart';
 import 'package:provider/provider.dart';
 
 class YtClient {
@@ -14,8 +15,7 @@ class YtClient {
   ));
 
   YtClient() {
-    _dio.interceptors
-        .add(LogInterceptor(requestBody: true, responseBody: true));
+    _dio.interceptors.add(DioLogger());
     (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
       final client = HttpClient();
       client.userAgent = '';

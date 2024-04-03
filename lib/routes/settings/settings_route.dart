@@ -113,6 +113,8 @@ class _SettingsRouteWrapperState extends SettingsRouteContract
 
   void _logoutVk() {
     //TODO invalidate token
+    widget.setVkToken?.call(null);
+    widget.setVkProfile?.call(null);
     SharedPreferences.getInstance().then((prefs) {
       prefs.remove('vk_token');
     });
@@ -134,11 +136,10 @@ class _SettingsRouteWrapperState extends SettingsRouteContract
   @override
   void onSuccessProfileVk(ProfileVk profile) {
     widget.setVkProfile?.call(profile);
-    WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
 
   @override
   void onErrorVk(String error) {
-    // TODO: implement onErrorVk
+    _logoutVk();
   }
 }

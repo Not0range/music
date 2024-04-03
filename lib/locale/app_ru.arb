@@ -6,5 +6,13 @@
     "signOut": "Выход",
     "login": "Логин",
     "password": "Пароль",
-    "more": "Больше"
+    "more": "Больше",
+    "myMusic": "Моя музыка",
+    "playlists": "Плейлисты",
+    "subscriptions": "Подписки",
+    "vkRecommendation": "ВК рекомендуемое",
+    "vkPopular": "ВК популярное",
+    "searchResult": "Результаты поиска",
+    "vk": "ВК",
+    "yt": "Youtube"
 }

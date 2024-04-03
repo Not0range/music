@@ -88,14 +88,14 @@ class _ProgressBarState extends State<ProgressBar> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapUp: (details) => _seek(context, details.localPosition),
-          onHorizontalDragStart: (details) => _startSeek(details.localPosition),
-          onHorizontalDragUpdate: (details) =>
-              _updateSeek(details.localPosition),
+          onTapUp: (d) => _seek(context, d.localPosition),
+          onHorizontalDragStart: (d) => _startSeek(d.localPosition),
+          onHorizontalDragUpdate: (d) => _updateSeek(d.localPosition),
           onHorizontalDragEnd: (_) => _endSeek(),
           onHorizontalDragCancel: _endSeek,
           child: Container(
@@ -104,11 +104,11 @@ class _ProgressBarState extends State<ProgressBar> {
             clipBehavior: Clip.hardEdge,
             decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                color: Colors.grey.shade400),
+                color: scheme.inversePrimary),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
               widthFactor: _current,
-              child: const ColoredBox(color: Colors.grey),
+              child: ColoredBox(color: scheme.primary),
             ),
           ),
         ),
@@ -117,7 +117,7 @@ class _ProgressBarState extends State<ProgressBar> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(msLabel(widget.value)),
+              Text(msLabel(_value ?? widget.value)),
               Text(msLabel(widget.max)),
             ],
           ),
