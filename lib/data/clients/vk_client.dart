@@ -100,7 +100,7 @@ class VkClient {
     return res.response!.items;
   }
 
-  Future<void> getMusicById(BuildContext context, String ids) async {
+  Future<void> getMusicByIds(BuildContext context, String ids) async {
     final data = (await _dio.get('audio.getById',
             queryParameters: {'access_token': _token(context), 'audios': ids}))
         .data;
