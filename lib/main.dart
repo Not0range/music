@@ -73,8 +73,9 @@ class _MainAppState extends State<MainApp> {
     final state = Provider.of<PlayerModel>(context, listen: false);
     _durationSub = player.onDurationChanged.listen((d) => state.duration = d);
     _positionSub = player.onPositionChanged.listen((d) => state.position = d);
-    _stateSub = player.onPlayerStateChanged
-        .listen((s) => state.playing = s == PlayerState.playing);
+    _stateSub = player.onPlayerStateChanged.listen((s) => state.playing = s ==
+            PlayerState.playing ||
+        s == PlayerState.completed && player.releaseMode == ReleaseMode.loop);
   }
 
   @override

@@ -62,7 +62,8 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
     final p = state.position.inSeconds;
     final d = state.duration.inSeconds;
 
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final color = scheme.primary;
 
     return Column(children: [
@@ -109,7 +110,7 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
                       icon: const Icon(Icons.fast_rewind)),
                   IconButton(
                       iconSize: 36,
-                      onPressed: _playPause,
+                      onPressed: () => _playPause(state.playing),
                       icon:
                           Icon(state.playing ? Icons.pause : Icons.play_arrow)),
                   IconButton(
@@ -131,7 +132,19 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
                   Expanded(
                       child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [Text(state.title), Text(state.artist)],
+                    children: [
+                      Text(
+                        state.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                      Text(
+                        state.artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    ],
                   )),
                   IconButton(
                       iconSize: 36,
@@ -192,9 +205,9 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
     }
   }
 
-  void _playPause() {
+  void _playPause(bool playing) {
     final player = Player.of(context);
-    if (player.state != PlayerState.playing) {
+    if (!playing) {
       player.resume();
     } else {
       player.pause();

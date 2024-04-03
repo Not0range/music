@@ -1,4 +1,3 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/net_image.dart';
@@ -26,12 +25,12 @@ class _MiniPlayerState extends State<MiniPlayer> {
     widget.onChangePosition?.call(double.infinity);
   }
 
-  void _playPause() {
+  void _playPause(bool playing) {
     final player = Player.of(context);
-    if (player.state == PlayerState.playing) {
-      player.pause();
-    } else {
+    if (!playing) {
       player.resume();
+    } else {
+      player.pause();
     }
   }
 
@@ -60,7 +59,7 @@ class _MiniPlayerState extends State<MiniPlayer> {
               ),
               Expanded(child: Text(state.title)),
               IconButton(
-                  onPressed: _playPause,
+                  onPressed: () => _playPause(state.playing),
                   icon: Icon(state.playing ? Icons.pause : Icons.play_arrow))
             ],
           ),
