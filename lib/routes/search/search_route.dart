@@ -2,14 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
+import 'package:music/components/loading_container.dart';
 import 'package:music/data/models/vk/music_vk.dart';
 import 'package:music/components/result_category.dart';
 import 'package:music/utils/service.dart';
+import 'package:music/utils/styles.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'components/search_bar.dart';
 import 'search_presenter.dart';
+
+final _whiteSpace = RegExp(r'^\s*$');
 
 class SearchRoute extends StatefulWidget {
   const SearchRoute({super.key});
@@ -22,11 +26,13 @@ class _SearchRouteState extends SearchContract
     with SearchPresenter, AutomaticKeepAliveClientMixin {
   Timer? _delay;
 
-  Iterable<MusicVk> _resultVk = [];
+  List<MusicVk> _resultVk = [];
 
-  Iterable<MusicVk> _resultYt = [];
+  List<MusicVk> _resultYt = [];
 
   String _query = '';
+
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -38,29 +44,57 @@ class _SearchRouteState extends SearchContract
     _delay?.cancel();
     _query = query;
 
-    _delay = Timer(const Duration(milliseconds: 500), _doSearch);
+    if (_whiteSpace.hasMatch(_query)) {
+      setState(() {
+        _resultVk = [];
+        _resultYt = [];
+      });
+      return;
+    }
+
+    if (!_loading) setState(() => _loading = true);
+    _delay = Timer(const Duration(seconds: 1), _doSearch);
   }
 
-  void _doSearch() {
+  Future<void> _doSearch() async {
     final state = Provider.of<AppModel>(context, listen: false);
-    if (state.vkToken != null) searchVk(_query);
-    if (state.ytToken != null) {} //TODO yt search
+    await [
+      state.vkToken != null ? searchVk(_query) : Future.value(),
+      Future.value() //TODO yt search
+    ].wait;
+    if (mounted) setState(() => _loading = false);
+  }
+
+  void _favoriteVk(String id) {
+    final ids = id.split('_').map((e) => int.parse(e)).toList();
+    addVk(ids[0], ids[1]);
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: SearchAppBar(onChanged: _search)),
-      body: ListView(
+
+    final Widget child;
+    if (_loading) {
+      child = ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        children: [ResultCategory.loading(), ResultCategory.loading()],
+      );
+    } else {
+      child = ListView(
         children: [
+          if (_resultVk.isEmpty && _resultYt.isEmpty)
+            Text(
+              AppLocalizations.of(context).searchInvite,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
           ResultCategory(
             title: AppLocalizations.of(context).vk,
             items: _resultVk,
             type: Service.vk,
             forwardTitle: false,
+            addToFavorite: _favoriteVk,
           ),
           ResultCategory(
             title: AppLocalizations.of(context).yt,
@@ -69,17 +103,33 @@ class _SearchRouteState extends SearchContract
             forwardTitle: false,
           ),
         ],
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: SearchAppBar(onChanged: _search)),
+      body: Shimmer(
+        gradient: Theme.of(context).brightness == Brightness.light
+            ? shimmerLigth
+            : shimmerDark,
+        child: child,
       ),
     );
   }
 
   @override
-  void onSuccessVk(Iterable<MusicVk> result) {
+  void onSuccessVk(List<MusicVk> result) {
     if (!mounted) return;
 
     setState(() {
       _resultVk = result;
     });
+  }
+
+  @override
+  void onFavoriteSuccess() {
+    // TODO: implement onFavoriteSuccess
   }
 
   @override

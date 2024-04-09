@@ -2,11 +2,13 @@ import 'service.dart';
 
 class Playlist {
   final Service service;
-  final bool favorite;
+  final PlaylistType type;
   final String? id;
 
-  Playlist(this.service, this.favorite, [this.id]);
+  Playlist(this.service, this.type, [this.id]);
 }
+
+enum PlaylistType { favorite, album, related }
 
 class User {
   final Service service;

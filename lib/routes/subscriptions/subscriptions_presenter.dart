@@ -6,8 +6,8 @@ import 'package:music/data/repository.dart';
 import 'subscriptions_route.dart';
 
 abstract class SubscriptionsContract extends State<SubscriptionsRoute> {
-  void onFriends(Iterable<UserVk> users);
-  void onGroups(Iterable<GroupVk> groups);
+  void onFriends(List<UserVk> users);
+  void onGroups(List<GroupVk> groups);
 }
 
 mixin SubscriptionsPresenter on SubscriptionsContract {

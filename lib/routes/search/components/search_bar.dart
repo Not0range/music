@@ -21,6 +21,11 @@ class _SearchAppBarState extends State<SearchAppBar> {
     super.dispose();
   }
 
+  void _clear() {
+    _controller.clear();
+    widget.onChanged?.call('');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -33,8 +38,7 @@ class _SearchAppBarState extends State<SearchAppBar> {
           decoration:
               InputDecoration(hintText: AppLocalizations.of(context).search),
         )),
-        IconButton(
-            onPressed: () => _controller.clear(), icon: const Icon(Icons.clear))
+        IconButton(onPressed: _clear, icon: const Icon(Icons.clear))
       ],
     );
   }

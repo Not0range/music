@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/data/models/vk/group_vk.dart';
 import 'package:music/data/models/vk/list_result.dart';
+import 'package:music/data/models/vk/lyrics_vk.dart';
 import 'package:music/data/models/vk/music_vk.dart';
 import 'package:music/data/models/vk/playlist_vk.dart';
 import 'package:music/data/models/vk/profile_vk.dart';
@@ -20,7 +21,7 @@ class VkClient {
   final _dio = Dio(BaseOptions(
     baseUrl: 'https://api.vk.com/method/',
     followRedirects: true,
-    queryParameters: {'v': vkApiVersion, 'lang': 'en'},
+    queryParameters: {'v': vkApiVersion, 'lang': 'ru'},
     validateStatus: (status) => status != null && status >= 100 && status < 500,
   ));
 
@@ -46,7 +47,7 @@ class VkClient {
               'grant_type': 'password',
               'client_id': '2274003',
               'client_secret': 'hHbZxrka2uZ6jB1inYsH',
-              'scope': 'audio,offline',
+              'scope': 'all',
               'device_id': generateRandomStr(16),
             },
             data: FormData.fromMap({'username': login, 'password': password})))
@@ -65,7 +66,7 @@ class VkClient {
     return res.response!;
   }
 
-  Future<Iterable<MusicVk>> searchMusic(BuildContext context, String query,
+  Future<List<MusicVk>> searchMusic(BuildContext context, String query,
       [int page = 1]) async {
     final data = (await _dio.get('audio.search', queryParameters: {
       'access_token': _token(context),
@@ -85,7 +86,7 @@ class VkClient {
     return res.response!.items;
   }
 
-  Future<Iterable<MusicVk>> getUserMusic(BuildContext context,
+  Future<List<MusicVk>> getUserMusic(BuildContext context,
       {int? ownerId, int? albumId}) async {
     final JsonMap params = {'access_token': _token(context)};
     if (ownerId != null) params['owner_id'] = ownerId;
@@ -144,7 +145,7 @@ class VkClient {
     return res.response!;
   }
 
-  Future<Iterable<PlaylistVk>> getPlaylists(
+  Future<List<PlaylistVk>> getPlaylists(
       BuildContext context, int ownerId) async {
     final data = (await _dio.get('audio.getPlaylists', queryParameters: {
       'access_token': _token(context),
@@ -157,30 +158,34 @@ class VkClient {
     return res.response!.items;
   }
 
-  Future<Iterable<MusicVk>> getRecommended(BuildContext context) async {
-    final data = (await _dio.get('audio.getRecommendations',
-            queryParameters: {'access_token': _token(context)}))
-        .data;
+  Future<List<MusicVk>> getRecommended(BuildContext context,
+      [String? target]) async {
+    final params = {'access_token': _token(context)};
+    if (target != null) params['target_audio'] = target;
+
+    final data =
+        (await _dio.get('audio.getRecommendations', queryParameters: params))
+            .data;
     final res = ResponseVk.fromJson(
         data, (json) => ListResult.fromJson(json, (e) => MusicVk.fromJson(e)));
     if (res.error != null) throw res.error!.message;
     return res.response!.items;
   }
 
-  Future<Iterable<MusicVk>> getPopular(BuildContext context) async {
+  Future<List<MusicVk>> getPopular(BuildContext context) async {
     final data = (await _dio.get('audio.getPopular',
             queryParameters: {'access_token': _token(context)}))
         .data;
-    final res = ResponseVk.fromJson(
-        data, (json) => (json as List).map((e) => MusicVk.fromJson(e)));
+    final res = ResponseVk.fromJson(data,
+        (json) => (json as List).map((e) => MusicVk.fromJson(e)).toList());
     if (res.error != null) throw res.error!.message;
     return res.response!;
   }
 
-  Future<Iterable<UserVk>> getFriends(BuildContext context) async {
+  Future<List<UserVk>> getFriends(BuildContext context) async {
     final data = (await _dio.get('friends.get', queryParameters: {
       'access_token': _token(context),
-      'order': 'name',
+      'order': 'hints',
       'fields': 'photo_100,can_see_audio'
     }))
         .data;
@@ -190,7 +195,7 @@ class VkClient {
     return res.response!.items;
   }
 
-  Future<Iterable<GroupVk>> getGroups(BuildContext context) async {
+  Future<List<GroupVk>> getGroups(BuildContext context) async {
     final data = (await _dio.get('groups.get', queryParameters: {
       'access_token': _token(context),
       'extended': 1,
@@ -201,5 +206,14 @@ class VkClient {
         data, (json) => ListResult.fromJson(json, (e) => GroupVk.fromJson(e)));
     if (res.error != null) throw res.error!.message;
     return res.response!.items;
+  }
+
+  Future<String> getLyrics(BuildContext context, String id) async {
+    final data = (await _dio.get('audio.getLyrics',
+            queryParameters: {'access_token': _token(context), 'audio_id': id}))
+        .data;
+    final res = ResponseVk.fromJson(data, (json) => LyricsVk.fromJson(json));
+    if (res.error != null) throw res.error!.message;
+    return res.response!.text;
   }
 }

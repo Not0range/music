@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
-import 'package:music/components/net_image.dart';
 import 'package:music/data/models/vk/playlist_vk.dart';
 import 'package:music/components/playlist_item.dart';
 import 'package:music/routes/media/media_presenter.dart';
@@ -20,7 +19,8 @@ class MediaRoute extends StatefulWidget {
 
 class _MediaRouteState extends MediaContract
     with MediaPresenter, AutomaticKeepAliveClientMixin {
-  Iterable<IPlaylist> _playlistsVk = [];
+  List<IPlaylist> _playlistsVk = [];
+  bool _loading = true;
 
   @override
   void initState() {
@@ -32,7 +32,8 @@ class _MediaRouteState extends MediaContract
 
   Future<void> _load() async {
     final vkId = Provider.of<AppModel>(context, listen: false).vkProfile?.id;
-    if (vkId != null) await getVkPlaylists(vkId);
+    await [vkId != null ? getVkPlaylists(vkId) : Future.value()].wait;
+    if (mounted) setState(() => _loading = false);
   }
 
   Widget _builder(BuildContext context, int index) {
@@ -41,58 +42,52 @@ class _MediaRouteState extends MediaContract
       if (state.vkToken == null) return const SizedBox.shrink();
 
       return PlaylistItem(
-        leading: SizedBox(
-          width: 46,
-          height: 46,
-          child: Icon(
-            Icons.favorite,
-            size: 36,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        type: Service.vk,
+        service: Service.vk,
         title: AppLocalizations.of(context).myMusic,
+        type: PlaylistItemType.music,
         onTap: () => openPlaylist(context, AppLocalizations.of(context).myMusic,
-            Playlist(Service.vk, true)),
+            Playlist(Service.vk, PlaylistType.favorite)),
       );
     }
 
-    final item = _playlistsVk.elementAt(index - 1).info;
+    final item = _playlistsVk[index - 1].info;
     return PlaylistItem(
-      leading: Container(
-        height: 46,
-        width: 46,
-        clipBehavior: Clip.hardEdge,
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(5)),
-        child: NetImage(
-          img: item.cover,
-          placeholder: const Icon(Icons.library_music_outlined),
-        ),
-      ),
-      type: Service.vk,
+      leading: item.cover,
+      service: Service.vk,
       title: item.title,
-      onTap: () => openPlaylist(
-          context, item.title, Playlist(Service.vk, false, item.id)),
+      type: PlaylistItemType.music,
+      onTap: () => openPlaylist(context, item.title,
+          Playlist(Service.vk, PlaylistType.album, item.id)),
     );
+  }
+
+  Widget _laodingBuilder(BuildContext context, int _) {
+    return const PlaylistItem.loading(type: PlaylistItemType.music);
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (_loading) {
+      return ListView.builder(
+        padding: const EdgeInsets.only(top: 10),
+        physics: const NeverScrollableScrollPhysics(),
+        itemBuilder: _laodingBuilder,
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: _load,
-      child: Padding(
+      child: ListView.builder(
         padding: const EdgeInsets.only(top: 10),
-        child: ListView.builder(
-          itemCount: _playlistsVk.length + 1,
-          itemBuilder: _builder,
-        ),
+        itemCount: _playlistsVk.length + 1,
+        itemBuilder: _builder,
       ),
     );
   }
 
   @override
-  void onSuccessVk(Iterable<PlaylistVk> result) {
+  void onSuccessVk(List<PlaylistVk> result) {
     setState(() {
       _playlistsVk = result;
     });

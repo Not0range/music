@@ -5,14 +5,20 @@ import 'package:music/components/net_image.dart';
 import 'package:music/components/player.dart';
 import 'package:music/routes/player/components/progress_bar.dart';
 import 'package:music/utils/service.dart';
+import 'package:music/utils/styles.dart';
+import 'package:music/utils/utils.dart';
 import 'package:provider/provider.dart';
 
+import 'components/player_playlist.dart';
 import 'player_presenter.dart';
 
 class PlayerRoute extends StatefulWidget {
   final double position;
+  final double topInset;
+  final VoidCallback? onClosed;
 
-  const PlayerRoute({super.key, this.position = 0});
+  const PlayerRoute(
+      {super.key, this.position = 0, this.topInset = 0, this.onClosed});
 
   @override
   State<StatefulWidget> createState() => _PlayerRouteState();
@@ -20,6 +26,15 @@ class PlayerRoute extends StatefulWidget {
 
 class _PlayerRouteState extends PlayerContract with PlayerPresenter {
   final _controller = DraggableScrollableController();
+  final _playlistController = DraggableScrollableController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() {
+      if (_controller.size == 0) widget.onClosed?.call();
+    });
+  }
 
   @override
   void didUpdateWidget(covariant PlayerRoute oldWidget) {
@@ -30,6 +45,7 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
   @override
   void dispose() {
     _controller.dispose();
+    _playlistController.dispose();
     super.dispose();
   }
 
@@ -46,19 +62,39 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
   }
 
   Widget _builder(BuildContext context, ScrollController controller) {
-    return Container(
-      decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          boxShadow: const [BoxShadow(blurRadius: 5)]),
-      child: SingleChildScrollView(
-        controller: controller,
-        child: Consumer<PlayerModel>(builder: _consumerBuilder),
-      ),
+    return Stack(
+      alignment: Alignment.bottomCenter,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              boxShadow: const [BoxShadow(blurRadius: 5)]),
+          child: Column(
+            children: [
+              SizedBox(height: widget.topInset),
+              _topPanel(),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: controller,
+                  child: Builder(builder: _consumerBuilder),
+                ),
+              ),
+            ],
+          ),
+        ),
+        PlayerPlaylist(
+          topInset: widget.topInset,
+          controller: _playlistController,
+        ),
+      ],
     );
   }
 
-  Widget _consumerBuilder(BuildContext context, PlayerModel state, Widget? _) {
+  Widget _consumerBuilder(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+
+    final state = Provider.of<PlayerModel>(context,
+        listen: _controller.isAttached && _controller.size > 0);
     final p = state.position.inSeconds;
     final d = state.duration.inSeconds;
 
@@ -68,14 +104,17 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
 
     return Column(children: [
       SizedBox(
-        height: size.height * 0.9,
+        height: size.height * 0.80,
         width: size.width,
         child: Column(
           children: [
             Expanded(
               child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  clipBehavior: Clip.hardEdge,
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration:
+                      BoxDecoration(borderRadius: BorderRadius.circular(10)),
                   child: AspectRatio(
                     aspectRatio: 1,
                     child: NetImage(
@@ -94,87 +133,129 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
                 ),
               ),
             ),
+            _title(state, theme.textTheme.bodyLarge, color),
             Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  IconButton(
-                      iconSize: 36,
-                      color: state.shuffle ? color : null,
-                      onPressed: () => _toggleShuffle(state),
-                      icon: const Icon(Icons.shuffle)),
-                  IconButton(
-                      iconSize: 36,
-                      onPressed: () {},
-                      icon: const Icon(Icons.fast_rewind)),
-                  IconButton(
-                      iconSize: 36,
-                      onPressed: () => _playPause(state.playing),
-                      icon:
-                          Icon(state.playing ? Icons.pause : Icons.play_arrow)),
-                  IconButton(
-                      iconSize: 36,
-                      onPressed: () {},
-                      icon: const Icon(Icons.fast_forward)),
-                  IconButton(
-                      iconSize: 36,
-                      color: state.repeat ? color : null,
-                      onPressed: () => _toggleRepeat(state),
-                      icon: const Icon(Icons.repeat)),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 20, right: 10, bottom: 10),
-              child: Row(
-                children: [
-                  Expanded(
-                      child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        state.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyLarge,
-                      ),
-                      Text(
-                        state.artist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      )
-                    ],
-                  )),
-                  IconButton(
-                      iconSize: 36,
-                      color: state.favorite.isNotEmpty ? color : null,
-                      onPressed: () => _toggleFavorite(
-                          state.service,
-                          state.isFavorite
-                              ? FavoriteType.include
-                              : state.favorite == 'restore'
-                                  ? FavoriteType.restore
-                                  : FavoriteType.exclude,
-                          state.isFavorite ? state.favorite : state.id),
-                      icon: Icon(state.isFavorite
-                          ? Icons.favorite
-                          : Icons.favorite_border))
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 0),
               child: ProgressBar(
                 max: d,
                 value: p,
                 onSeeking: _seek,
               ),
             ),
+            _control(state, color),
+            _bottomPanel()
           ],
         ),
-      )
+      ),
+      //TODO lyrics box
     ]);
+  }
+
+  Widget _bottomPanel() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+              iconSize: playerIconSize / 1.5,
+              onPressed: () {},
+              icon: const Icon(Icons.reply)),
+          IconButton(
+              iconSize: playerIconSize / 1.5,
+              onPressed: () => _playlistController.animateTo(1,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.linear),
+              icon: const Icon(Icons.playlist_play))
+        ],
+      ),
+    );
+  }
+
+  Widget _control(PlayerModel state, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        IconButton(
+            iconSize: playerIconSize,
+            color: state.shuffled != null ? color : null,
+            onPressed: () => _toggleShuffle(state),
+            icon: const Icon(Icons.shuffle)),
+        IconButton(
+            iconSize: playerIconSize,
+            onPressed: _prev,
+            icon: const Icon(Icons.fast_rewind)),
+        IconButton(
+            iconSize: playerIconSize * 2,
+            onPressed: () => _playPause(state.playing),
+            icon: Icon(state.playing ? Icons.pause_circle : Icons.play_circle)),
+        IconButton(
+            iconSize: playerIconSize,
+            onPressed: _next,
+            icon: const Icon(Icons.fast_forward)),
+        IconButton(
+            iconSize: playerIconSize,
+            color: state.repeat ? color : null,
+            onPressed: () => _toggleRepeat(state),
+            icon: const Icon(Icons.repeat)),
+      ],
+    );
+  }
+
+  Widget _title(PlayerModel state, TextStyle? style, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 20, right: 10, bottom: 5),
+      child: Row(
+        children: [
+          Expanded(
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                state.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: style,
+              ),
+              Text(
+                state.artist,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )
+            ],
+          )),
+          IconButton(
+              iconSize: playerIconSize,
+              color: state.favorite.isNotEmpty ? color : null,
+              onPressed: () => _toggleFavorite(
+                  state.service,
+                  state.isFavorite
+                      ? FavoriteType.include
+                      : state.favorite == 'restore'
+                          ? FavoriteType.restore
+                          : FavoriteType.exclude,
+                  state.isFavorite ? state.favorite : state.id),
+              icon: Icon(
+                  state.isFavorite ? Icons.favorite : Icons.favorite_border))
+        ],
+      ),
+    );
+  }
+
+  Widget _topPanel() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        IconButton(
+            iconSize: playerIconSize,
+            onPressed: () => _scrollListener(0),
+            icon: const Icon(Icons.expand_more)),
+        IconButton(
+            iconSize: playerIconSize,
+            onPressed: () => _scrollListener(0),
+            icon: const Icon(Icons.more_vert)),
+      ],
+    );
   }
 
   @override
@@ -192,8 +273,8 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
   void _toggleFavorite(Service? service, FavoriteType favorite, String? id) {
     if (id == null) return;
 
-    final ids = id.split('_').map((e) => int.parse(e)).toList();
     if (service == Service.vk) {
+      final ids = id.split('_').map((e) => int.parse(e)).toList();
       if (favorite == FavoriteType.include) {
         final id = Provider.of<AppModel>(context, listen: false).vkProfile?.id;
         if (id != null) removeVk(id, ids[1]);
@@ -214,13 +295,49 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
     }
   }
 
+  void _prev() {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    if (state.index == null) return;
+
+    var i = state.index! - 1;
+    if (i < 0) i = state.list.length - 1;
+
+    state.index = i;
+    final item = (state.shuffled ?? state.list)[i];
+    state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
+
+    Player.of(context).play(UrlSource(item.url));
+  }
+
+  void _next() {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+
+    if (state.index != null) {
+      var i = state.index! + 1;
+      if (i >= state.list.length) i = 0;
+
+      state.index = i;
+    }
+
+    final MusicInfo item;
+    if (state.queue.isNotEmpty) {
+      item = state.enqueue();
+    } else {
+      if (state.index == null) return;
+      item = (state.shuffled ?? state.list)[state.index!];
+    }
+    state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
+
+    Player.of(context).play(UrlSource(item.url));
+  }
+
   void _seek(int position) {
     Player.of(context).seek(Duration(seconds: position));
   }
 
   void _toggleShuffle(PlayerModel state) {
-    state.shuffle = !state.shuffle;
-    //TODO
+    if (state.list.isEmpty) return;
+    state.shuffle = state.shuffled == null;
   }
 
   void _toggleRepeat(PlayerModel state) {
@@ -236,16 +353,28 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
   @override
   void onFavoriteSuccess([int? newId]) {
     final state = Provider.of<PlayerModel>(context, listen: false);
+    final String favorite;
+
     if (newId != null) {
       final owner = Provider.of<AppModel>(context, listen: false).vkProfile!.id;
-      state.favorite = '${owner}_$newId';
+      favorite = '${owner}_$newId';
     } else {
       if (state.favorite == state.id) {
-        state.favorite = 'restore';
+        favorite = 'restore';
       } else {
-        state.favorite = '';
+        favorite = '';
       }
     }
+    state.favorite = favorite;
+    if (!state.fromQueue) {
+      state.replace((state.shuffled ?? state.list)[state.index!]
+          .copyWith(extra: {'favorite': favorite}));
+    }
+  }
+
+  @override
+  void onLyricsSuccess(String lyrics) {
+    // TODO: implement onLyricsSuccess
   }
 
   @override

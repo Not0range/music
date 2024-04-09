@@ -5,7 +5,8 @@ import 'package:music/data/repository.dart';
 import 'search_route.dart';
 
 abstract class SearchContract extends State<SearchRoute> {
-  void onSuccessVk(Iterable<MusicVk> result);
+  void onSuccessVk(List<MusicVk> result);
+  void onFavoriteSuccess();
   void onError(String error);
 }
 
@@ -17,5 +18,13 @@ mixin SearchPresenter on SearchContract {
     } catch (e) {
       onError(e.toString());
     }
+  }
+
+  Future<void> addVk(int ownerId, int id) async {
+    try {
+      final r = Repository.vkOf(context);
+      await r.addToFavorite(context, ownerId, id);
+      onFavoriteSuccess();
+    } catch (e) {}
   }
 }

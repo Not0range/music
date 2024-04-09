@@ -43,17 +43,18 @@ class _MainAppState extends State<MainApp> {
   late final StreamSubscription _durationSub;
   late final StreamSubscription _positionSub;
   late final StreamSubscription _stateSub;
+  late final StreamSubscription _completeSub;
 
   @override
   void initState() {
     super.initState();
-    AudioPlayer.global.setAudioContext(const AudioContext(
-        android: AudioContextAndroid(stayAwake: true),
-        iOS: AudioContextIOS(options: [
-          AVAudioSessionOptions.allowAirPlay,
-          AVAudioSessionOptions.allowBluetoothA2DP
-        ])));
+    AudioPlayer.global.setAudioContext(AudioContext(
+        android: const AudioContextAndroid(stayAwake: true),
+        iOS: AudioContextIOS()));
 
+    player.positionUpdater = TimerPositionUpdater(
+        getPosition: player.getCurrentPosition,
+        interval: const Duration(milliseconds: 500));
     player.setReleaseMode(ReleaseMode.stop);
     Future.delayed(Duration.zero, _listeners);
   }
@@ -63,6 +64,7 @@ class _MainAppState extends State<MainApp> {
     _durationSub.cancel();
     _positionSub.cancel();
     _stateSub.cancel();
+    _completeSub.cancel();
 
     player.dispose();
 
@@ -72,10 +74,32 @@ class _MainAppState extends State<MainApp> {
   void _listeners() {
     final state = Provider.of<PlayerModel>(context, listen: false);
     _durationSub = player.onDurationChanged.listen((d) => state.duration = d);
-    _positionSub = player.onPositionChanged.listen((d) => state.position = d);
+    _positionSub = player.onPositionChanged.listen((p) => state.position = p);
     _stateSub = player.onPlayerStateChanged.listen((s) => state.playing = s ==
             PlayerState.playing ||
         s == PlayerState.completed && player.releaseMode == ReleaseMode.loop);
+    _completeSub = player.onPlayerComplete.listen((_) {
+      if (player.releaseMode == ReleaseMode.loop) return;
+
+      if (state.queue.isNotEmpty) {
+        state.fromQueue = true;
+        final q = state.enqueue();
+        state.setItem(q, favorite: '${q.extra?['favorite'] ?? ''}');
+
+        player.play(UrlSource(q.url));
+        return;
+      }
+      state.fromQueue = false;
+      if (state.index == null) return;
+
+      var i = state.index! + 1;
+      if (i >= state.list.length) i = 0;
+
+      state.index = i;
+      final item = (state.shuffled ?? state.list)[i];
+      state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
+      player.play(UrlSource(item.url));
+    });
   }
 
   @override

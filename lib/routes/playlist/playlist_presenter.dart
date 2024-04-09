@@ -4,7 +4,8 @@ import 'package:music/routes/playlist/playlist_route.dart';
 import 'package:music/utils/utils.dart';
 
 abstract class PlaylistContract extends State<PlaylistRoute> {
-  void onSuccess(Iterable<IMusic> result);
+  void onSuccess(List<IMusic> result);
+  void onFavoriteSuccess(bool added);
   void onError(String error);
 }
 
@@ -26,5 +27,30 @@ mixin PlaylistPresenter on PlaylistContract {
     } catch (e) {
       onError(e.toString());
     }
+  }
+
+  Future<void> getRelatedVk(String target) async {
+    try {
+      final r = Repository.vkOf(context);
+      onSuccess(await r.getRecommended(context, target));
+    } catch (e) {
+      onError(e.toString());
+    }
+  }
+
+  Future<void> addVk(int ownerId, int id) async {
+    try {
+      final r = Repository.vkOf(context);
+      await r.addToFavorite(context, ownerId, id);
+      onFavoriteSuccess(true);
+    } catch (e) {}
+  }
+
+  Future<void> removeVk(int ownerId, int id) async {
+    try {
+      final r = Repository.vkOf(context);
+      await r.removeFromFavorite(context, ownerId, id);
+      onFavoriteSuccess(false);
+    } catch (e) {}
   }
 }

@@ -8,9 +8,10 @@ class MusicVk extends IMusic {
   final int duration;
   final String url;
   final AlbumVk? album;
+  final bool lyrics;
 
   MusicVk(this.id, this.ownerId, this.artist, this.title, this.duration,
-      this.url, this.album);
+      this.url, this.album, this.lyrics);
 
   factory MusicVk.fromJson(JsonMap json) {
     return MusicVk(
@@ -20,12 +21,13 @@ class MusicVk extends IMusic {
         json['title'],
         json['duration'],
         json['url'],
-        json['album'] != null ? AlbumVk.fromJson(json['album']) : null);
+        json['album'] != null ? AlbumVk.fromJson(json['album']) : null,
+        json['lyrics_id'] == 1);
   }
 
   @override
-  MusicInfo get info => cacheInfo ??= MusicInfo('${ownerId}_$id', artist, title,
-      url, duration, album?.smallCover, album?.bigCover);
+  MusicInfo get info => cacheInfo ??= MusicInfo.vk('${ownerId}_$id', artist,
+      title, url, duration, lyrics, album?.smallCover, album?.bigCover);
 }
 
 class AlbumVk {

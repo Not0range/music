@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:music/components/net_image.dart';
+import 'package:music/app_model.dart';
 import 'package:music/data/models/vk/group_vk.dart';
 import 'package:music/data/models/vk/user_vk.dart';
 import 'package:music/components/playlist_item.dart';
 import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
 import 'package:music/utils/service_objects.dart';
+import 'package:provider/provider.dart';
 
 import 'subscriptions_presenter.dart';
 
@@ -18,8 +19,9 @@ class SubscriptionsRoute extends StatefulWidget {
 
 class _SubscriptionsRouteState extends SubscriptionsContract
     with SubscriptionsPresenter, AutomaticKeepAliveClientMixin {
-  Iterable<UserVk> _friends = [];
-  Iterable<GroupVk> _groups = [];
+  List<UserVk> _friends = [];
+  List<GroupVk> _groups = [];
+  bool _loading = true;
 
   @override
   void initState() {
@@ -30,7 +32,12 @@ class _SubscriptionsRouteState extends SubscriptionsContract
   }
 
   Future<void> _load() async {
-    await [getFriends(), getGroups()].wait;
+    final state = Provider.of<AppModel>(context, listen: false);
+    await [
+      state.vkToken != null ? getFriends() : Future.value(),
+      state.vkToken != null ? getGroups() : Future.value()
+    ].wait;
+    if (mounted) setState(() => _loading = false);
   }
 
   Widget? _builder(BuildContext context, int index) {
@@ -53,44 +60,45 @@ class _SubscriptionsRouteState extends SubscriptionsContract
     }
 
     return PlaylistItem(
-      leading: Container(
-        height: 46,
-        width: 46,
-        clipBehavior: Clip.hardEdge,
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(5)),
-        child: NetImage(
-          img: avatar,
-          placeholder: const Icon(Icons.person),
-        ),
-      ),
-      type: Service.vk,
+      leading: avatar,
+      service: Service.vk,
       title: name,
+      type: PlaylistItemType.user,
       onTap: () => openUser(context, name, User(Service.vk, id)),
     );
+  }
+
+  Widget _loadingBuilder(BuildContext context, int _) {
+    return const PlaylistItem.loading(type: PlaylistItemType.user);
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (_loading) {
+      return ListView.builder(
+          padding: const EdgeInsets.only(top: 10),
+          physics: const NeverScrollableScrollPhysics(),
+          itemBuilder: _loadingBuilder);
+    }
+
     return RefreshIndicator(
         onRefresh: _load,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: ListView.builder(
-              itemCount: _friends.length + _groups.length,
-              itemBuilder: _builder),
-        ));
+        child: ListView.builder(
+            padding: const EdgeInsets.only(top: 10),
+            itemCount: _friends.length + _groups.length,
+            itemBuilder: _builder));
   }
 
   @override
-  void onFriends(Iterable<UserVk> users) {
+  void onFriends(List<UserVk> users) {
     setState(() {
-      _friends = users.where((e) => e.audioAccess);
+      _friends = users.where((e) => e.audioAccess).toList();
     });
   }
 
   @override
-  void onGroups(Iterable<GroupVk> groups) {
+  void onGroups(List<GroupVk> groups) {
     setState(() {
       _groups = groups;
     });

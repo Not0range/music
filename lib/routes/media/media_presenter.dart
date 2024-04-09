@@ -4,7 +4,7 @@ import 'package:music/data/repository.dart';
 import 'package:music/routes/media/media_route.dart';
 
 abstract class MediaContract extends State<MediaRoute> {
-  void onSuccessVk(Iterable<PlaylistVk> result);
+  void onSuccessVk(List<PlaylistVk> result);
   void onError(String error);
 }
 

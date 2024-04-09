@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:music/data/models/vk/profile_vk.dart';
 import 'package:music/data/models/yt/profile_yt.dart';
 import 'package:music/utils/service.dart';
+import 'package:music/utils/utils.dart';
 
 class AppModel extends ChangeNotifier {
   AppModel({String? vkToken, String? ytToken}) {
@@ -75,14 +76,6 @@ class PlayerModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _shuffle = false;
-  bool get shuffle => _shuffle;
-  set shuffle(bool value) {
-    if (_shuffle == value) return;
-    _shuffle = value;
-    notifyListeners();
-  }
-
   String? _id;
   String? get id => _id;
   set id(String? value) {
@@ -132,4 +125,175 @@ class PlayerModel extends ChangeNotifier {
   }
 
   bool get isFavorite => _favorite.isNotEmpty && _favorite != 'restore';
+
+  String _lyrics = '';
+  String get lyrics => _lyrics;
+  set lyrics(String value) {
+    _lyrics = value;
+    notifyListeners();
+  }
+
+  int? _index;
+  int? get index => _index;
+  set index(int? value) {
+    if (_index == value) return;
+
+    _index = value;
+    notifyListeners();
+  }
+
+  List<MusicInfo> _list = [];
+  List<MusicInfo> get list => _list;
+  set list(List<MusicInfo> value) {
+    if (_list == value) return;
+
+    _list = value;
+    _shuffled = null;
+    _index = 0;
+    notifyListeners();
+  }
+
+  List<MusicInfo>? _shuffled;
+  List<MusicInfo>? get shuffled => _shuffled;
+  set shuffled(List<MusicInfo>? value) {
+    if (_shuffled == value) return;
+
+    _shuffled = value;
+    _index = 0;
+    notifyListeners();
+  }
+
+  set shuffle(bool value) {
+    if (value) {
+      _shuffled = _list.toList();
+
+      MusicInfo? current;
+      if (_queue.isEmpty) current = _shuffled!.removeAt(_index!);
+      _shuffled!.shuffle();
+
+      if (current != null) _shuffled!.insert(0, current);
+      _index = 0;
+    } else if (_shuffled != null) {
+      _index = _list.indexOf(_shuffled![_index!]);
+      _shuffled = null;
+    }
+    notifyListeners();
+  }
+
+  List<MusicInfo> _queue = [];
+  List<MusicInfo> get queue => _queue;
+  set queue(List<MusicInfo> value) {
+    if (_list == value) return;
+
+    _queue = value;
+    notifyListeners();
+  }
+
+  void setItem(MusicInfo item,
+      {String? id,
+      Service? type,
+      String? favorite,
+      String? artist,
+      String? title,
+      String? img}) {
+    _id = id ?? item.id;
+    _service = type ?? item.type;
+    _favorite = favorite ?? '';
+
+    _artist = artist ?? item.artist;
+    _title = title ?? item.title;
+    _img = img ?? item.coverBig;
+    notifyListeners();
+  }
+
+  void reorder(int oldIndex, int newIndex) {
+    if (_index == null) return;
+
+    if (oldIndex < newIndex) newIndex -= 1;
+
+    final list = _shuffled ?? _list;
+    final current = list[_index!];
+
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+
+    _index = list.indexOf(current);
+    notifyListeners();
+  }
+
+  void reorderQueue(int oldIndex, int newIndex) {
+    if (_index == null) return;
+
+    if (oldIndex < newIndex) newIndex -= 1;
+
+    final item = _queue.removeAt(oldIndex);
+    _queue.insert(newIndex, item);
+
+    notifyListeners();
+  }
+
+  bool _fromQueue = false;
+  bool get fromQueue => _fromQueue;
+  set fromQueue(bool value) {
+    if (_fromQueue == value) return;
+    _fromQueue = value;
+    notifyListeners();
+  }
+
+  ///Ставит трек в начало очереди \
+  ///Возвращается true при пустом списке воспроизведения
+  ///предполагается выбор указанного трека как текущего
+  bool headQueue(MusicInfo item) {
+    if (_index == null) {
+      _id = item.id;
+      _service = item.type;
+      _favorite = '${item.extra?['favorite'] ?? ''}';
+
+      _artist = item.artist;
+      _title = item.title;
+      _img = item.coverBig;
+      notifyListeners();
+      return true;
+    }
+    _queue.insert(0, item);
+    notifyListeners();
+    return false;
+  }
+
+  ///Ставит трек в конец очереди \
+  ///Возвращается true при пустом списке воспроизведения
+  ///предполагается выбор указанного трека как текущего
+  bool tailQueue(MusicInfo item) {
+    if (_index == null) {
+      _id = item.id;
+      _service = item.type;
+      _favorite = '${item.extra?['favorite'] ?? ''}';
+
+      _artist = item.artist;
+      _title = item.title;
+      _img = item.coverBig;
+      notifyListeners();
+      return true;
+    }
+    _queue.add(item);
+    notifyListeners();
+    return false;
+  }
+
+  MusicInfo enqueue([int i = 0]) {
+    final item = _queue.removeAt(i);
+    notifyListeners();
+    return item;
+  }
+
+  void replace(MusicInfo item, [int? index]) {
+    final list = _shuffled ?? _list;
+    list[index ?? _index!] = item;
+    notifyListeners();
+  }
+
+  void replaceQueue(MusicInfo item, int index) {
+    _queue[index] = item;
+    notifyListeners();
+  }
 }

@@ -5,6 +5,7 @@ import 'player_route.dart';
 
 abstract class PlayerContract extends State<PlayerRoute> {
   void onFavoriteSuccess([int? newId]);
+  void onLyricsSuccess(String lyrics);
   void onError(String error);
 }
 
@@ -30,6 +31,13 @@ mixin PlayerPresenter on PlayerContract {
       final r = Repository.vkOf(context);
       final item = await r.restoreFavorite(context, ownerId, id);
       onFavoriteSuccess(item.id);
+    } catch (e) {}
+  }
+
+  Future<void> getLyricsVk(String id) async {
+    try {
+      final r = Repository.vkOf(context);
+      onLyricsSuccess(await r.getLyrics(context, id));
     } catch (e) {}
   }
 }

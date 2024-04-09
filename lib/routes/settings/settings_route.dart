@@ -95,11 +95,7 @@ class _SettingsRouteWrapperState extends SettingsRouteContract
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-        initialChildSize: 1,
-        minChildSize: 0.9,
-        expand: false,
-        snap: true,
-        builder: _builder);
+        initialChildSize: 1, expand: false, snap: true, builder: _builder);
   }
 
   void _loginVk() {

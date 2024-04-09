@@ -39,7 +39,8 @@ class _MiniPlayerState extends State<MiniPlayer> {
     final d = state.duration.inSeconds;
     final f = d > 0 ? p / d : 0.0;
 
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -57,7 +58,16 @@ class _MiniPlayerState extends State<MiniPlayer> {
                       child: const Icon(Icons.music_note)),
                 ),
               ),
-              Expanded(child: Text(state.title)),
+              Expanded(
+                  child: Padding(
+                padding: const EdgeInsets.only(left: 5),
+                child: Text(
+                  state.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyLarge,
+                ),
+              )),
               IconButton(
                   onPressed: () => _playPause(state.playing),
                   icon: Icon(state.playing ? Icons.pause : Icons.play_arrow))

@@ -9,7 +9,7 @@ class DismissContainer extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => FocusScope.of(context).unfocus(),
+      onTap: () => FocusScope.of(context).focusedChild?.unfocus(),
       child: child,
     );
   }

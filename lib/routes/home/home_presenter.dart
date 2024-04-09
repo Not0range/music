@@ -5,8 +5,9 @@ import 'package:music/data/repository.dart';
 import 'home_route.dart';
 
 abstract class HomeContract extends State<HomeRoute> {
-  void onRecommendationsVk(Iterable<MusicVk> result);
-  void onPopularVk(Iterable<MusicVk> result);
+  void onRecommendationsVk(List<MusicVk> result);
+  void onPopularVk(List<MusicVk> result);
+  void onFavoriteSuccess();
 }
 
 mixin HomePresenter on HomeContract {
@@ -21,6 +22,14 @@ mixin HomePresenter on HomeContract {
     try {
       final r = Repository.vkOf(context);
       onPopularVk(await r.getPopular(context));
+    } catch (e) {}
+  }
+
+  Future<void> addVk(int ownerId, int id) async {
+    try {
+      final r = Repository.vkOf(context);
+      await r.addToFavorite(context, ownerId, id);
+      onFavoriteSuccess();
     } catch (e) {}
   }
 }
