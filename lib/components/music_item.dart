@@ -23,8 +23,11 @@ class MusicItem extends StatelessWidget {
   final bool favorite;
   final Proc1<String>? onToggleFavorite;
   final Proc1<bool>? addToQueue;
+  final VoidCallback? addToPlaylist;
+  final VoidCallback? removeFromPlaylist;
   final int? reorderableIndex;
   final bool useContextMenu;
+  final bool selected;
   final bool loading;
 
   const MusicItem({
@@ -38,8 +41,11 @@ class MusicItem extends StatelessWidget {
     this.favorite = false,
     this.onToggleFavorite,
     this.addToQueue,
+    this.addToPlaylist,
+    this.removeFromPlaylist,
     this.reorderableIndex,
     this.useContextMenu = true,
+    this.selected = false,
   }) : loading = false;
 
   const MusicItem.loading({super.key})
@@ -52,8 +58,11 @@ class MusicItem extends StatelessWidget {
         favorite = false,
         onToggleFavorite = null,
         addToQueue = null,
+        addToPlaylist = null,
+        removeFromPlaylist = null,
         reorderableIndex = null,
         useContextMenu = false,
+        selected = false,
         loading = true;
 
   IconData get _type {
@@ -68,7 +77,7 @@ class MusicItem extends StatelessWidget {
   }
 
   void _openContextMenu(BuildContext context) {
-    openMenu(
+    openItemMenu(
         context, MusicInfo(id, artist, title, '', 0, false, img, img, type),
         favorite: favorite,
         onPlay: onPlay,
@@ -80,13 +89,15 @@ class MusicItem extends StatelessWidget {
         onToggleLike: onToggleFavorite != null && type == Service.youtube
             ? () => onToggleFavorite?.call(id)
             : null,
+        onAddToPlaylist: addToPlaylist,
+        onRemoveFromPlaylist: removeFromPlaylist,
         onSearchRelated: () => _searchRelated(context),
         onShare: _share);
   }
 
   void _searchRelated(BuildContext context) {
     openPlaylist(context, AppLocalizations.of(context).relatedTracks,
-        Playlist(type, PlaylistType.related, id));
+        Playlist(type, PlaylistType.related, id), false);
   }
 
   void _share() {
@@ -153,8 +164,20 @@ class MusicItem extends StatelessWidget {
                   ),
                   Consumer<PlayerModel>(
                       builder: (ctx, state, _) => Visibility(
-                          visible: state.service == type && state.id == id,
-                          child: PlayingIcon(animated: state.playing)))
+                          visible: state.service == type &&
+                              state.id == id &&
+                              !selected,
+                          child: PlayingIcon(animated: state.playing))),
+                  if (selected)
+                    Container(
+                        width: double.maxFinite,
+                        height: double.maxFinite,
+                        margin: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey.withOpacity(0.5),
+                        ),
+                        child: const Icon(Icons.check))
                 ],
               ),
             ),

@@ -8,6 +8,7 @@ import 'package:music/utils/box_icons.dart';
 import 'package:music/utils/utils.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'settings_presenter.dart';
 
@@ -68,27 +69,44 @@ class _SettingsRouteWrapperState extends SettingsRouteContract
   }
 
   Widget _builder(BuildContext context, ScrollController controller) {
-    return SingleChildScrollView(
-      controller: controller,
-      child: Column(
-        children: [
-          AccountInfo(
-            icon: BoxIcons.vk,
-            name: widget.vkProfile?.name,
-            id: widget.vkProfile?.id.toString(),
-            avatar: widget.vkProfile?.avatar,
-            onTap: widget.vkToken != null ? _logoutVk : _loginVk,
-            loading: widget.vkProfile == null && widget.vkToken != null,
+    var t = Theme.of(context);
+    return Column(
+      children: [
+        AppBar(
+          automaticallyImplyLeading: false,
+          centerTitle: true,
+          title: Text(AppLocalizations.of(context).settings),
+        ),
+        Expanded(
+          child: ListView(
+            controller: controller,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 10, 0, 0),
+                child: Text(
+                  AppLocalizations.of(context).services,
+                  style: t.textTheme.bodyLarge,
+                ),
+              ),
+              AccountInfo(
+                icon: BoxIcons.vk,
+                name: widget.vkProfile?.name,
+                id: widget.vkProfile?.id.toString(),
+                avatar: widget.vkProfile?.avatar,
+                onTap: widget.vkToken != null ? _logoutVk : _loginVk,
+                loading: widget.vkProfile == null && widget.vkToken != null,
+              ),
+              AccountInfo(
+                icon: BoxIcons.youtube,
+                name: null,
+                id: null,
+                onTap: widget.ytToken != null ? _logoutYt : _loginYt,
+                loading: widget.ytProfile == null && widget.ytToken != null,
+              ),
+            ],
           ),
-          AccountInfo(
-            icon: BoxIcons.youtube,
-            name: null,
-            id: null,
-            onTap: widget.ytToken != null ? _logoutYt : _loginYt,
-            loading: widget.ytProfile == null && widget.ytToken != null,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

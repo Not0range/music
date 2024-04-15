@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:music/data/models/vk/playlist_vk.dart';
 import 'package:music/data/models/vk/profile_vk.dart';
 import 'package:music/data/models/yt/profile_yt.dart';
 import 'package:music/utils/service.dart';
@@ -155,13 +156,6 @@ class PlayerModel extends ChangeNotifier {
 
   List<MusicInfo>? _shuffled;
   List<MusicInfo>? get shuffled => _shuffled;
-  set shuffled(List<MusicInfo>? value) {
-    if (_shuffled == value) return;
-
-    _shuffled = value;
-    _index = 0;
-    notifyListeners();
-  }
 
   set shuffle(bool value) {
     if (value) {
@@ -286,6 +280,34 @@ class PlayerModel extends ChangeNotifier {
     return item;
   }
 
+  void insert(MusicInfo item, [int? index]) {
+    if ((index != null || _index != null) && (index ?? _index! - 1) >= 0) {
+      _list.insert(index ?? _index! - 1, item);
+      if (_index != null) _index = _index! + 1;
+    } else {
+      _list.add(item);
+    }
+    if (shuffled != null) {
+      shuffle = true;
+    } else {
+      notifyListeners();
+    }
+  }
+
+  void insertAll(Iterable<MusicInfo> items, [int? index]) {
+    if ((index != null || _index != null) && (index ?? _index! - 1) >= 0) {
+      _list.insertAll(index ?? _index! - 1, items);
+      if (_index != null) _index = _index! + items.length;
+    } else {
+      _list.addAll(items);
+    }
+    if (shuffled != null) {
+      shuffle = true;
+    } else {
+      notifyListeners();
+    }
+  }
+
   void replace(MusicInfo item, [int? index]) {
     final list = _shuffled ?? _list;
     list[index ?? _index!] = item;
@@ -294,6 +316,15 @@ class PlayerModel extends ChangeNotifier {
 
   void replaceQueue(MusicInfo item, int index) {
     _queue[index] = item;
+    notifyListeners();
+  }
+}
+
+class PlaylistsModel extends ChangeNotifier {
+  List<PlaylistVk>? _vkPlaylists;
+  List<PlaylistVk>? get vkPlaylists => _vkPlaylists;
+  set vkPlaylists(List<PlaylistVk>? value) {
+    _vkPlaylists = value;
     notifyListeners();
   }
 }

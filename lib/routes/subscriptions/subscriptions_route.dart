@@ -7,11 +7,22 @@ import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
 import 'package:music/utils/service_objects.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'subscriptions_presenter.dart';
 
 class SubscriptionsRoute extends StatefulWidget {
-  const SubscriptionsRoute({super.key});
+  final bool vk;
+  final bool vkFriends;
+  final bool vkGroups;
+  final bool youtube;
+
+  const SubscriptionsRoute(
+      {super.key,
+      this.vk = true,
+      this.vkFriends = true,
+      this.vkGroups = true,
+      this.youtube = true});
 
   @override
   State<StatefulWidget> createState() => _SubscriptionsRouteState();
@@ -27,44 +38,72 @@ class _SubscriptionsRouteState extends SubscriptionsContract
   void initState() {
     super.initState();
     Future.delayed(Duration.zero, () {
-      _load();
+      _load(
+        vkFriends: widget.vk && widget.vkFriends,
+        vkGroups: widget.vk && widget.vkGroups,
+        youtube: widget.youtube,
+      );
     });
   }
 
-  Future<void> _load() async {
+  @override
+  void didUpdateWidget(covariant SubscriptionsRoute oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    bool needVkFriends = false;
+    bool needVkGroups = false;
+    bool needYoutube = false;
+    if (widget.vkFriends != oldWidget.vkFriends) {
+      needVkFriends = widget.vk && widget.vkFriends && _friends.isEmpty;
+    }
+    if (widget.vkGroups != oldWidget.vkGroups) {
+      needVkGroups = widget.vk && widget.vkGroups && _groups.isEmpty;
+    }
+    if (widget.youtube != oldWidget.youtube) {
+      // needYoutube =widget.youtube && widget.playlists.ytPlaylists.isEmpty;
+    }
+
+    _loading = needVkFriends || needVkGroups || needYoutube;
+    _load(
+        vkFriends: needVkFriends, vkGroups: needVkGroups, youtube: needYoutube);
+  }
+
+  Future<void> _load(
+      {bool vkFriends = true,
+      bool vkGroups = true,
+      bool youtube = true}) async {
     final state = Provider.of<AppModel>(context, listen: false);
     await [
-      state.vkToken != null ? getFriends() : Future.value(),
-      state.vkToken != null ? getGroups() : Future.value()
+      vkFriends && state.vkToken != null ? getFriends() : Future.value(),
+      vkGroups && state.vkToken != null ? getGroups() : Future.value(),
+      //TODO load youtube subscriptions
     ].wait;
     if (mounted) setState(() => _loading = false);
   }
 
-  Widget? _builder(BuildContext context, int index) {
-    final String name;
-    final String id;
-    final String avatar;
-
-    if (index >= _friends.length) {
-      final item = _groups.elementAtOrNull(index - _friends.length);
-      if (item == null) return null;
-      name = item.title;
-      id = '-${item.id}';
-      avatar = item.avatar;
-    } else {
-      final item = _friends.elementAtOrNull(index);
-      if (item == null) return null;
-      name = '${item.firstName} ${item.lastName}';
-      id = '${item.id}';
-      avatar = item.avatar;
-    }
+  Widget _friendsBuilder(BuildContext context, int i) {
+    final item = _friends[i];
+    final name = '${item.firstName} ${item.lastName}';
 
     return PlaylistItem(
-      leading: avatar,
+      leading: item.avatar,
       service: Service.vk,
       title: name,
       type: PlaylistItemType.user,
-      onTap: () => openUser(context, name, User(Service.vk, id)),
+      onTap: () => openUser(context, name, User(Service.vk, '${item.id}')),
+    );
+  }
+
+  Widget _groupsBuilder(BuildContext context, int i) {
+    final item = _groups[i];
+
+    return PlaylistItem(
+      leading: item.avatar,
+      service: Service.vk,
+      title: item.title,
+      type: PlaylistItemType.user,
+      onTap: () =>
+          openUser(context, item.title, User(Service.vk, '-${item.id}')),
     );
   }
 
@@ -82,12 +121,29 @@ class _SubscriptionsRouteState extends SubscriptionsContract
           itemBuilder: _loadingBuilder);
     }
 
-    return RefreshIndicator(
+    if (widget.vk && (widget.vkFriends || widget.vkGroups) || widget.youtube) {
+      return RefreshIndicator(
         onRefresh: _load,
-        child: ListView.builder(
-            padding: const EdgeInsets.only(top: 10),
-            itemCount: _friends.length + _groups.length,
-            itemBuilder: _builder));
+        child: CustomScrollView(
+          slivers: [
+            const SliverPadding(padding: EdgeInsets.only(top: 10)),
+            if (widget.vk && widget.vkFriends)
+              SliverList.builder(
+                  itemCount: _friends.length, itemBuilder: _friendsBuilder),
+            if (widget.vk && widget.vkGroups)
+              SliverList.builder(
+                  itemCount: _groups.length, itemBuilder: _groupsBuilder),
+          ],
+        ),
+      );
+    }
+    return Center(
+      child: Text(
+        AppLocalizations.of(context).emptyFilterSubscriptions,
+        style: Theme.of(context).textTheme.bodyLarge,
+        textAlign: TextAlign.center,
+      ),
+    );
   }
 
   @override

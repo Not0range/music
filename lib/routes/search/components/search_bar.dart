@@ -5,8 +5,9 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class SearchAppBar extends StatefulWidget {
   final Proc1<String>? onChanged;
+  final VoidCallback? openFilter;
 
-  const SearchAppBar({super.key, this.onChanged});
+  const SearchAppBar({super.key, this.onChanged, this.openFilter});
 
   @override
   State<StatefulWidget> createState() => _SearchAppBarState();
@@ -38,7 +39,10 @@ class _SearchAppBarState extends State<SearchAppBar> {
           decoration:
               InputDecoration(hintText: AppLocalizations.of(context).search),
         )),
-        IconButton(onPressed: _clear, icon: const Icon(Icons.clear))
+        IconButton(onPressed: _clear, icon: const Icon(Icons.clear)),
+        IconButton(
+            onPressed: widget.openFilter,
+            icon: const Icon(Icons.filter_alt_outlined)),
       ],
     );
   }

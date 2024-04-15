@@ -34,7 +34,7 @@ class _PlaylistsCarouselState extends State<PlaylistsCarousel> {
       padding: const EdgeInsets.only(left: 10),
       child: InkWell(
         onTap: () => openPlaylist(context, item.title,
-            Playlist(Service.vk, PlaylistType.album, item.id)),
+            Playlist(Service.vk, PlaylistType.album, item.id), false),
         child: Column(
           children: [
             AspectRatio(

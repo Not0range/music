@@ -118,7 +118,8 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
                         ),
                       )),
                       SliverReorderableList(
-                          itemBuilder: (ctx, i) => _playlistBuilder(state, i),
+                          itemBuilder: (ctx, i) =>
+                              _playlistBuilder(state, i, controller),
                           itemCount: math.max(len, 0),
                           onReorder: (o, n) => state.reorder(
                               (o + 1 + state.index!) % list.length,
@@ -151,7 +152,8 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
     );
   }
 
-  Widget _playlistBuilder(PlayerModel state, int i) {
+  Widget _playlistBuilder(
+      PlayerModel state, int i, ScrollController controller) {
     final list = state.shuffled ?? state.list;
     final index = (state.index! + i + 1) % list.length;
     final item = list[index];
@@ -165,12 +167,15 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
         type: state.service ?? Service.local,
         img: item.coverSmall,
         reorderableIndex: i,
-        onPlay: () => _play(item, index),
+        onPlay: () => _play(item, index, controller),
       ),
     );
   }
 
-  void _play(MusicInfo item, int index) {
+  void _play(MusicInfo item, int index, ScrollController controller) {
+    controller.animateTo(0,
+        duration: const Duration(milliseconds: 200), curve: Curves.linear);
+
     final state = Provider.of<PlayerModel>(context, listen: false);
 
     state.setItem(item);

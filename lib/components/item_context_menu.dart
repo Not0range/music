@@ -15,6 +15,7 @@ class ItemContextMenu extends StatelessWidget {
   final VoidCallback? onAddToPlaylist;
   final VoidCallback? onSearchRelated;
   final VoidCallback? onShare;
+  final VoidCallback? onRemoveFromPlaylist;
 
   const ItemContextMenu(
       {super.key,
@@ -27,11 +28,12 @@ class ItemContextMenu extends StatelessWidget {
       this.onToggleLike,
       this.onAddToPlaylist,
       this.onSearchRelated,
-      this.onShare});
+      this.onShare,
+      this.onRemoveFromPlaylist});
 
   void _onTap(BuildContext context, [VoidCallback? action]) {
-    action?.call();
     Navigator.pop(context);
+    action?.call();
   }
 
   Widget _builder(BuildContext context, ScrollController controller) {
@@ -41,7 +43,6 @@ class ItemContextMenu extends StatelessWidget {
     return Column(
       children: [
         _Preview(
-          id: info.id,
           artist: info.artist,
           title: info.title,
           img: info.coverSmall,
@@ -94,6 +95,12 @@ class ItemContextMenu extends StatelessWidget {
                   title: Text(locale.addToPlaylist),
                   onTap: () => _onTap(context, onAddToPlaylist),
                 ),
+                if (onRemoveFromPlaylist != null)
+                  ListTile(
+                    leading: const Icon(Icons.playlist_remove),
+                    title: Text(locale.removeFromPlaylist),
+                    onTap: () => _onTap(context, onRemoveFromPlaylist),
+                  ),
                 ListTile(
                   leading: const Icon(Icons.manage_search),
                   title: Text(locale.searchRelated),
@@ -120,13 +127,11 @@ class ItemContextMenu extends StatelessWidget {
 }
 
 class _Preview extends StatelessWidget {
-  final String id;
   final String artist;
   final String title;
   final String? img;
 
-  const _Preview(
-      {required this.id, required this.artist, required this.title, this.img});
+  const _Preview({required this.artist, required this.title, this.img});
 
   @override
   Widget build(BuildContext context) {

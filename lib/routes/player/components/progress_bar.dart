@@ -74,7 +74,7 @@ class _ProgressBarState extends State<ProgressBar> {
     if (_value == null) return;
 
     widget.onSeeking?.call(_value!);
-    Future.delayed(const Duration(milliseconds: 100), () {
+    Future.delayed(const Duration(milliseconds: 200), () {
       setState(() {
         _value = null;
         _start = null;

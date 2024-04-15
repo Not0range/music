@@ -7,6 +7,7 @@ import 'package:music/components/loading_container.dart';
 import 'package:music/components/net_image.dart';
 import 'package:music/components/player.dart';
 import 'package:music/components/playing_icon.dart';
+import 'package:music/components/playlist_item.dart';
 import 'package:music/utils/constants.dart';
 import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
@@ -71,8 +72,12 @@ class ResultCategory extends StatelessWidget {
     }
   }
 
+  void _addToVkPlaylist(BuildContext context, String id) {
+    showAddToPlaylistDialog(context, id, type);
+  }
+
   void _openMenu(BuildContext context, MusicInfo info, int index) {
-    openMenu(context, info,
+    openItemMenu(context, info,
         onPlay: () => _play(context, info, index),
         onHeadQueue: () => _addToQueue(context, info, true),
         onTailQueue: () => _addToQueue(context, info, false),
@@ -82,13 +87,14 @@ class ResultCategory extends StatelessWidget {
         onToggleLike: addToFavorite != null && type == Service.youtube
             ? () => addToFavorite?.call(info.id)
             : null,
+        onAddToPlaylist: () => _addToVkPlaylist(context, info.id),
         onSearchRelated: () => _searchRelated(context, info),
         onShare: () => _share(info));
   }
 
   void _searchRelated(BuildContext context, MusicInfo info) {
     openPlaylist(context, AppLocalizations.of(context).relatedTracks,
-        Playlist(type, PlaylistType.related, info.id));
+        Playlist(type, PlaylistType.related, info.id), false);
   }
 
   void _share(MusicInfo info) {
@@ -101,6 +107,18 @@ class ResultCategory extends StatelessWidget {
   }
 
   Widget _builder(BuildContext context, int index) {
+    if (index * 2 >= _itemCount) {
+      return Center(
+        child: OutlinedButton(
+            style: const ButtonStyle(
+                fixedSize:
+                    MaterialStatePropertyAll(Size.fromWidth(double.maxFinite))),
+            onPressed: () =>
+                openResults(context, type, items, forwardTitle ? title : null),
+            child: Text(AppLocalizations.of(context).more)),
+      );
+    }
+
     final item1 = items.elementAtOrNull(index * 2)?.info;
     final item2 = items.elementAtOrNull(index * 2 + 1)?.info;
 
@@ -132,6 +150,32 @@ class ResultCategory extends StatelessWidget {
     return Column(
       children: [ResultItem.loading(), ResultItem.loading()],
     );
+  }
+
+  void _openPlaylistMenu(BuildContext context) {
+    openPlaylistMenu(
+      context,
+      title,
+      type,
+      img: '',
+      PlaylistItemType.music,
+      onPlay: () => _play(context, items[0].info, 0),
+      onAddToCurrent: () => _addToCurrent(context),
+    );
+  }
+
+  void _addToCurrent(BuildContext context) {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+
+    final i = items.map((e) => e.info);
+    final empty = state.list.isEmpty;
+    state.insertAll(i);
+    if (empty) {
+      final item = i.first;
+      state.setItem(item);
+      state.index = 0;
+      Player.of(context).setSource(UrlSource(item.url));
+    }
   }
 
   @override
@@ -175,10 +219,9 @@ class ResultCategory extends StatelessWidget {
                   title,
                   style: Theme.of(context).textTheme.bodyLarge,
                 )),
-                TextButton(
-                    onPressed: () => openResults(
-                        context, type, items, forwardTitle ? title : null),
-                    child: Text(AppLocalizations.of(context).more))
+                IconButton(
+                    onPressed: () => _openPlaylistMenu(context),
+                    icon: const Icon(Icons.more_vert)),
               ],
             ),
           ),
@@ -186,7 +229,8 @@ class ResultCategory extends StatelessWidget {
             child: PageView.builder(
                 padEnds: false,
                 controller: PageController(viewportFraction: 0.8),
-                itemCount: (math.min(_itemCount, items.length) / 2).ceil(),
+                itemCount: (math.min(_itemCount, items.length) / 2).ceil() +
+                    (items.length > _itemCount ? 1 : 0),
                 itemBuilder: _builder),
           )
         ],

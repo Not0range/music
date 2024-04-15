@@ -7,11 +7,13 @@ import 'package:music/components/player.dart';
 import 'package:music/data/models/vk/music_vk.dart';
 import 'package:music/data/models/vk/playlist_vk.dart';
 import 'package:music/routes/user/components/playlists_carousel.dart';
+import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
 import 'package:music/utils/service_objects.dart';
 import 'package:music/utils/styles.dart';
 import 'package:music/utils/utils.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'user_presenter.dart';
 
@@ -31,6 +33,8 @@ class _UserRouteState extends UserContract with UserPresenter {
   List<IPlaylist> _playlists = [];
   bool _loading = true;
 
+  List<int>? _selected;
+
   @override
   void initState() {
     super.initState();
@@ -49,33 +53,23 @@ class _UserRouteState extends UserContract with UserPresenter {
   }
 
   Widget _builder(BuildContext context, int i) {
-    if (i == 0) {
-      return PlaylistsCarousel(
-        items: _playlists,
-        loading: _loading,
-      );
-    }
-
-    final item = _items[i - 1].info;
+    final item = _items[i].info;
     return MusicItem(
       id: item.id,
       artist: item.artist,
       title: item.title,
       img: item.coverSmall,
       type: _type,
-      onPlay: () => _play(item, i - 1),
+      onPlay:
+          _selected == null ? () => _play(item, i) : () => _toggleSelected(i),
       addToQueue: (h) => _addToQueue(item, h),
       onToggleFavorite: _favoriteVk,
+      addToPlaylist: () => _addToVkPlaylist(item.id),
+      selected: _selected?.contains(i) ?? false,
     );
   }
 
   Widget _loadingBuilder(BuildContext context, int i) {
-    if (i == 0) {
-      return PlaylistsCarousel(
-        items: _playlists,
-        loading: true,
-      );
-    }
     return const MusicItem.loading();
   }
 
@@ -107,31 +101,73 @@ class _UserRouteState extends UserContract with UserPresenter {
     }
   }
 
+  void _addToVkPlaylist(String id) {
+    showAddToPlaylistDialog(context, id, widget.user.service);
+  }
+
   void _favoriteVk(String id) {
     final ids = id.split('_').map((e) => int.parse(e)).toList();
     addVk(ids[0], ids[1]);
   }
 
+  void _toggleSelected(int i) {
+    if (_selected == null) return;
+
+    if (_selected!.contains(i)) {
+      _selected?.remove(i);
+    } else {
+      _selected?.add(i);
+    }
+    setState(() {});
+  }
+
+  void _willPop(bool willPop) {
+    if (willPop) return;
+
+    setState(() => _selected = null);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final Widget child;
-    if (_loading) {
-      child = ListView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          itemBuilder: _loadingBuilder);
-    } else {
-      child =
-          ListView.builder(itemCount: _items.length + 1, itemBuilder: _builder);
-    }
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
+    final locale = AppLocalizations.of(context);
+
+    return PopScope(
+      canPop: _selected == null,
+      onPopInvoked: _willPop,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_selected == null ? widget.title : locale.selectTracks),
+          actions: [
+            if (_selected == null)
+              IconButton(
+                  onPressed: () => setState(() => _selected = []),
+                  icon: const Icon(Icons.check_box_outlined))
+            else
+              IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
+          ],
+        ),
+        body: Shimmer(
+            gradient: Theme.of(context).brightness == Brightness.light
+                ? shimmerLigth
+                : shimmerDark,
+            child: RefreshIndicator(
+                onRefresh: _load,
+                child: CustomScrollView(
+                  physics:
+                      _loading ? const NeverScrollableScrollPhysics() : null,
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: PlaylistsCarousel(
+                        items: _playlists,
+                        loading: _loading,
+                      ),
+                    ),
+                    SliverList.builder(
+                        itemCount: _loading ? null : _items.length,
+                        itemBuilder: _loading ? _loadingBuilder : _builder),
+                  ],
+                ))),
       ),
-      body: Shimmer(
-          gradient: Theme.of(context).brightness == Brightness.light
-              ? shimmerLigth
-              : shimmerDark,
-          child: RefreshIndicator(onRefresh: _load, child: child)),
     );
   }
 

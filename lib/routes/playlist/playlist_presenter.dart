@@ -6,6 +6,7 @@ import 'package:music/utils/utils.dart';
 abstract class PlaylistContract extends State<PlaylistRoute> {
   void onSuccess(List<IMusic> result);
   void onFavoriteSuccess(bool added);
+  void onEditSuccess();
   void onError(String error);
 }
 
@@ -52,5 +53,23 @@ mixin PlaylistPresenter on PlaylistContract {
       await r.removeFromFavorite(context, ownerId, id);
       onFavoriteSuccess(false);
     } catch (e) {}
+  }
+
+  Future<void> reorderVk(String id, {String? nextId, String? prevId}) async {
+    try {
+      final r = Repository.vkOf(context);
+      await r.reorder(context, id, nextId: nextId, prevId: prevId);
+    } catch (e) {}
+  }
+
+  Future<void> editPlaylistVk(
+      int ownerId, int playlistId, List<String> audios) async {
+    try {
+      final r = Repository.vkOf(context);
+      await r.editPlaylist(context, ownerId, playlistId, audios: audios);
+      onEditSuccess();
+    } catch (e) {
+      onError(e.toString());
+    }
   }
 }

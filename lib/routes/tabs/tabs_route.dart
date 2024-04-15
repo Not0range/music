@@ -12,6 +12,7 @@ import 'package:music/utils/routes.dart';
 import 'package:music/utils/styles.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'tabs_presenter.dart';
 
@@ -106,16 +107,58 @@ class _LibraryRouteState extends State<LibraryRoute>
     with SingleTickerProviderStateMixin {
   late final _controller = TabController(length: 2, vsync: this);
 
+  bool _vk = false;
+  bool _vkFriends = false;
+  bool _vkGroups = false;
+  bool _youtube = false;
+
   @override
   void initState() {
     super.initState();
     _controller.addListener(() => setState(() {}));
+    _initParams();
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _initParams() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+
+    setState(() {
+      _vk = prefs.getBool('media_filter_vk') ?? true;
+      _vkFriends = prefs.getBool('media_filter_vk_friends') ?? true;
+      _vkGroups = prefs.getBool('media_filter_vk_groups') ?? true;
+      _youtube = prefs.getBool('media_filter_youtube') ?? true;
+    });
+  }
+
+  Future<void> _filterDialog() async {
+    final result = await openFilterDialog(context,
+        details: true,
+        vk: _vk,
+        vkFriends: _vkFriends,
+        vkGroups: _vkGroups,
+        youtube: _youtube);
+    if (result == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('media_filter_vk', result[0]);
+    prefs.setBool('media_filter_vk_friends', result[1]);
+    prefs.setBool('media_filter_vk_groups', result[2]);
+    prefs.setBool('media_filter_youtube', result[3]);
+
+    if (!mounted) return;
+    setState(() {
+      _vk = result[0];
+      _vkFriends = result[1];
+      _vkGroups = result[2];
+      _youtube = result[3];
+    });
   }
 
   @override
@@ -130,6 +173,9 @@ class _LibraryRouteState extends State<LibraryRoute>
         ]),
         actions: [
           IconButton(
+              onPressed: _filterDialog,
+              icon: const Icon(Icons.filter_alt_outlined)),
+          IconButton(
               onPressed: () => openSettings(context),
               icon: const Icon(Icons.settings))
         ],
@@ -138,9 +184,18 @@ class _LibraryRouteState extends State<LibraryRoute>
         gradient: Theme.of(context).brightness == Brightness.light
             ? shimmerLigth
             : shimmerDark,
-        child: TabBarView(
-            controller: _controller,
-            children: const [MediaRoute(), SubscriptionsRoute()]),
+        child: TabBarView(controller: _controller, children: [
+          MediaRoute(
+            vk: _vk,
+            youtube: _youtube,
+          ),
+          SubscriptionsRoute(
+            vk: _vk,
+            vkFriends: _vkFriends,
+            vkGroups: _vkGroups,
+            youtube: _youtube,
+          )
+        ]),
       ),
     );
   }

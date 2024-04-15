@@ -25,6 +25,7 @@ Future<void> main() async {
             vkToken: prefs.getString('vk_token'),
             ytToken: prefs.getString('yt_token'))),
     ChangeNotifierProvider(create: (ctx) => PlayerModel()),
+    ChangeNotifierProvider(create: (ctx) => PlaylistsModel()),
   ], child: const MainApp()));
 }
 

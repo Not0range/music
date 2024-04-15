@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:music/components/loading_container.dart';
 import 'package:music/utils/box_icons.dart';
+import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
 
 import 'net_image.dart';
@@ -11,6 +12,11 @@ class PlaylistItem extends StatelessWidget {
   final VoidCallback? onTap;
   final Service? service;
   final PlaylistItemType type;
+  final VoidCallback? onPlay;
+  final VoidCallback? onAddToCurrent;
+  final VoidCallback? onRemove;
+  final VoidCallback? onEdit;
+  final VoidCallback? onFollow;
   final bool loading;
 
   const PlaylistItem(
@@ -19,7 +25,12 @@ class PlaylistItem extends StatelessWidget {
       required this.title,
       this.onTap,
       this.service,
-      required this.type})
+      required this.type,
+      this.onPlay,
+      this.onAddToCurrent,
+      this.onRemove,
+      this.onEdit,
+      this.onFollow})
       : loading = false;
 
   const PlaylistItem.loading({super.key, required this.type})
@@ -27,6 +38,11 @@ class PlaylistItem extends StatelessWidget {
         title = '',
         onTap = null,
         service = null,
+        onPlay = null,
+        onAddToCurrent = null,
+        onRemove = null,
+        onEdit = null,
+        onFollow = null,
         loading = true;
 
   IconData get _type {
@@ -59,6 +75,21 @@ class PlaylistItem extends StatelessWidget {
     );
   }
 
+  void _openContextMenu(BuildContext context) {
+    openPlaylistMenu(
+      context,
+      title,
+      service ?? Service.local,
+      type,
+      img: leading,
+      onPlay: onPlay,
+      onAddToCurrent: onAddToCurrent,
+      onRemove: onRemove,
+      onEdit: onEdit,
+      onFollow: onFollow,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Widget child;
@@ -86,6 +117,7 @@ class PlaylistItem extends StatelessWidget {
     } else {
       child = InkWell(
           onTap: onTap,
+          onLongPress: () => _openContextMenu(context),
           child: Row(
             children: [
               Container(

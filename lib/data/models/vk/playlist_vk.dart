@@ -1,3 +1,4 @@
+import 'package:music/data/models/new_playlist_model.dart';
 import 'package:music/utils/utils.dart';
 
 class PlaylistVk extends IPlaylist {
@@ -5,8 +6,11 @@ class PlaylistVk extends IPlaylist {
   final int ownerId;
   final String title;
   final String photo;
+  final bool private;
+  final PlaylistPermissionsVk permissions;
 
-  PlaylistVk(this.id, this.ownerId, this.title, this.photo);
+  PlaylistVk(this.id, this.ownerId, this.title, this.photo, this.private,
+      this.permissions);
 
   factory PlaylistVk.fromJson(JsonMap json) {
     final JsonMap? photo = json['photo'];
@@ -23,10 +27,28 @@ class PlaylistVk extends IPlaylist {
             photo?['photo_135'] ??
             photo?['photo_68'] ??
             photo?['photo_34'] ??
-            '');
+            '',
+        json['no_discover'] == true,
+        PlaylistPermissionsVk.fromJson(json['permissions']));
   }
 
   @override
-  PlaylistInfo get info =>
-      cacheInfo ??= PlaylistInfo('${ownerId}_$id', title, photo);
+  PlaylistInfo get info => cacheInfo ??= PlaylistInfo('${ownerId}_$id', title,
+      photo, private ? PrivacyType.private : PrivacyType.public);
+}
+
+class PlaylistPermissionsVk {
+  final bool play;
+  final bool share;
+  final bool edit;
+  final bool follow;
+  final bool delete;
+
+  PlaylistPermissionsVk(
+      this.play, this.share, this.edit, this.follow, this.delete);
+
+  factory PlaylistPermissionsVk.fromJson(JsonMap json) {
+    return PlaylistPermissionsVk(json['play'], json['share'], json['edit'],
+        json['follow'], json['delete']);
+  }
 }

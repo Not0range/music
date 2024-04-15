@@ -1,12 +1,15 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:music/data/models/new_playlist_model.dart';
 
 import 'service.dart';
 
 typedef JsonMap = Map<String, dynamic>;
 
 typedef Proc1<T> = void Function(T);
+
+final whiteSpaceRegex = RegExp(r'^\s*$');
 
 String generateRandomStr(int length) {
   return List.generate(length, (_) => _randomChar()).join();
@@ -96,6 +99,7 @@ class PlaylistInfo {
   final String id;
   final String title;
   final String cover;
+  final PrivacyType privacy;
 
-  PlaylistInfo(this.id, this.title, this.cover);
+  PlaylistInfo(this.id, this.title, this.cover, this.privacy);
 }
