@@ -13,6 +13,8 @@ class PlaylistContextMenu extends StatelessWidget {
   final PlaylistItemType type;
   final VoidCallback? onPlay;
   final VoidCallback? onAddToCurrent;
+  final VoidCallback? onHeadQueue;
+  final VoidCallback? onTailQueue;
   final VoidCallback? onRemove;
   final VoidCallback? onEdit;
   final VoidCallback? onFollow;
@@ -25,6 +27,8 @@ class PlaylistContextMenu extends StatelessWidget {
       required this.type,
       this.onPlay,
       this.onAddToCurrent,
+      this.onHeadQueue,
+      this.onTailQueue,
       this.onRemove,
       this.onEdit,
       this.onFollow});
@@ -60,6 +64,19 @@ class PlaylistContextMenu extends StatelessWidget {
                   title: Text(locale.play),
                   onTap: () => _onTap(context, onPlay),
                 ),
+                if (onHeadQueue != null)
+                  ListTile(
+                    leading: const Icon(Icons.segment),
+                    title: Text(locale.headQueue),
+                    onTap: () => _onTap(context, onHeadQueue),
+                  ),
+                if (onTailQueue != null)
+                  ListTile(
+                    leading: Transform.scale(
+                        scaleY: -1, child: const Icon(Icons.segment)),
+                    title: Text(locale.tailQueue),
+                    onTap: () => _onTap(context, onTailQueue),
+                  ),
                 ListTile(
                   leading: const Icon(Icons.playlist_play),
                   title: Text(locale.addToCurrent),

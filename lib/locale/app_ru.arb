@@ -59,5 +59,8 @@
     "editPlaylist": "Редактировать плейлист",
     "removeFromPlaylist": "Удалить из плейлиста",
     "changeOrder": "Изменить порядок",
-    "selectTracks": "Выбрать..."
+    "selectTracks": "Выбрать...",
+    "removeFromCurrent": "Удалить из текущего плейлиста",
+    "removeFromQueue": "Удалить из очереди",
+    "clear": "Очистить"
 }

@@ -1,17 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:music/components/loading_container.dart';
 import 'package:music/components/net_image.dart';
+import 'package:music/components/playlist_item.dart';
 import 'package:music/utils/routes.dart';
-import 'package:music/utils/service.dart';
 import 'package:music/utils/service_objects.dart';
 import 'package:music/utils/utils.dart';
 
 class PlaylistsCarousel extends StatefulWidget {
   final List<IPlaylist> items;
+  final Proc1<PlaylistInfo>? onPlay;
+  final Proc1<PlaylistInfo>? addToCurrent;
+  final Proc1<PlaylistInfo>? onFollow;
   final bool loading;
 
   const PlaylistsCarousel(
-      {super.key, required this.items, this.loading = false});
+      {super.key,
+      required this.items,
+      this.onPlay,
+      this.addToCurrent,
+      this.onFollow,
+      this.loading = false});
 
   @override
   State<StatefulWidget> createState() => _PlaylistsCarouselState();
@@ -34,7 +42,8 @@ class _PlaylistsCarouselState extends State<PlaylistsCarousel> {
       padding: const EdgeInsets.only(left: 10),
       child: InkWell(
         onTap: () => openPlaylist(context, item.title,
-            Playlist(Service.vk, PlaylistType.album, item.id), false),
+            Playlist(item.type, PlaylistType.album, item.id), false),
+        onLongPress: () => _openContextMenu(context, item),
         child: Column(
           children: [
             AspectRatio(
@@ -82,6 +91,19 @@ class _PlaylistsCarouselState extends State<PlaylistsCarousel> {
           )
         ],
       ),
+    );
+  }
+
+  void _openContextMenu(BuildContext context, PlaylistInfo item) {
+    openPlaylistMenu(
+      context,
+      item.title,
+      item.type,
+      PlaylistItemType.music,
+      img: item.cover,
+      onPlay: () => widget.onPlay?.call(item),
+      onAddToCurrent: () => widget.addToCurrent?.call(item),
+      onFollow: () => widget.onFollow?.call(item),
     );
   }
 

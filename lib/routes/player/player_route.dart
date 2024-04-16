@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
@@ -25,6 +27,8 @@ class PlayerRoute extends StatefulWidget {
 }
 
 class _PlayerRouteState extends PlayerContract with PlayerPresenter {
+  late StreamSubscription _subscription;
+
   final _controller = DraggableScrollableController();
   final _playlistController = DraggableScrollableController();
 
@@ -33,6 +37,19 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
     super.initState();
     _controller.addListener(() {
       if (_controller.size == 0) widget.onClosed?.call();
+    });
+    Future.delayed(Duration.zero, () {
+      Player.streamOf(context).listen((cmd) {
+        if (cmd.type == BroadcastCommandType.needUrl) {
+          final id = Provider.of<PlayerModel>(context, listen: false).id!;
+          switch (cmd.service) {
+            case Service.vk:
+              getByIdVk(id);
+              break;
+            default:
+          }
+        }
+      });
     });
   }
 
@@ -44,6 +61,7 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
 
   @override
   void dispose() {
+    _subscription.cancel();
     _controller.dispose();
     _playlistController.dispose();
     super.dispose();
@@ -322,9 +340,11 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
     final MusicInfo item;
     if (state.queue.isNotEmpty) {
       item = state.enqueue();
+      state.fromQueue = true;
     } else {
       if (state.index == null) return;
       item = (state.shuffled ?? state.list)[state.index!];
+      state.fromQueue = false;
     }
     state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
 
@@ -380,6 +400,11 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
   @override
   void onError(String error) {
     // TODO: implement onError
+  }
+
+  @override
+  void onUrlSuccess(String url) {
+    Player.of(context).play(UrlSource(url));
   }
 }
 

@@ -6,8 +6,8 @@ import 'package:music/utils/utils.dart';
 
 abstract class MediaContract extends State<MediaRouteWrapper> {
   void onSuccessVk(List<PlaylistVk> result);
-  void onItemsSuccess(List<IMusic> result,
-      {bool add = false, bool favorite = false});
+  void onItemsSuccess(List<IMusic> result, PlaylistStartMode mode,
+      {bool favorite = false});
   void onError(String error);
 }
 
@@ -22,7 +22,7 @@ mixin MediaPresenter on MediaContract {
   Future<void> createVkPlaylist(int ownerId, String title, bool private) async {
     try {
       final r = Repository.vkOf(context);
-      await r.addPlaylist(context, ownerId, title, private);
+      await r.createPlaylist(context, ownerId, title, private);
       await getVkPlaylists(ownerId);
     } catch (e) {}
   }
@@ -36,22 +36,22 @@ mixin MediaPresenter on MediaContract {
     } catch (e) {}
   }
 
-  Future<void> getFavoritesVk({bool add = false}) async {
+  Future<void> getFavoritesVk(PlaylistStartMode mode) async {
     try {
       final r = Repository.vkOf(context);
-      onItemsSuccess(await r.getUserMusic(context), add: add, favorite: true);
+      onItemsSuccess(await r.getUserMusic(context), mode, favorite: true);
     } catch (e) {
       onError(e.toString());
     }
   }
 
-  Future<void> getFromPlaylistVk(int albumId,
-      {int? ownerId, bool add = false}) async {
+  Future<void> getFromPlaylistVk(int albumId, PlaylistStartMode mode,
+      {int? ownerId}) async {
     try {
       final r = Repository.vkOf(context);
       onItemsSuccess(
-          await r.getUserMusic(context, ownerId: ownerId, albumId: albumId),
-          add: add);
+          await r.getUserMusic(context, ownerId: ownerId, playlistId: albumId),
+          mode);
     } catch (e) {
       onError(e.toString());
     }

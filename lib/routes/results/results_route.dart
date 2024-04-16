@@ -34,17 +34,16 @@ class _ResultRouteState extends ResultContract with ResultPresenter {
       title: item.title,
       img: item.coverSmall,
       type: widget.type,
-      onPlay: _selected == null
-          ? () => _play(context, item, i)
-          : () => _toggleSelected(i),
-      addToQueue: (h) => _addToQueue(context, item, h),
+      onPlay:
+          _selected == null ? () => _play(item, i) : () => _toggleSelected(i),
+      addToQueue: (h) => _addToQueue([item], h),
       addToPlaylist: () => _addToVkPlaylist(context, item.id),
       onToggleFavorite: _favoriteVk,
       selected: _selected?.contains(i) ?? false,
     );
   }
 
-  void _play(BuildContext context, MusicInfo item, int index) {
+  void _play(MusicInfo item, int index) {
     final state = Provider.of<PlayerModel>(context, listen: false);
     if (state.id == item.id && state.service == widget.type) {
       //TODO open player
@@ -59,16 +58,24 @@ class _ResultRouteState extends ResultContract with ResultPresenter {
     Player.of(context).play(UrlSource(item.url));
   }
 
-  void _addToQueue(BuildContext context, MusicInfo item, bool head) {
+  void _playMultiple(Iterable<MusicInfo> items) {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    state.setItem(items.first);
+
+    state.list = items.toList();
+    Player.of(context).play(UrlSource(items.first.url));
+  }
+
+  void _addToQueue(Iterable<MusicInfo> items, bool head) {
     final state = Provider.of<PlayerModel>(context, listen: false);
     final bool start;
     if (head) {
-      start = state.headQueue(item);
+      start = state.headQueue(items);
     } else {
-      start = state.tailQueue(item);
+      start = state.tailQueue(items);
     }
     if (start) {
-      Player.of(context).setSourceUrl(item.url);
+      Player.of(context).setSourceUrl(items.first.url);
     }
   }
 
@@ -98,22 +105,39 @@ class _ResultRouteState extends ResultContract with ResultPresenter {
     setState(() => _selected = null);
   }
 
+  void _openMultipleMenu() {
+    openItemMenu(
+      context,
+      null,
+      onPlay: () => _playMultiple(_selected!.map((e) => widget.items[e].info)),
+      onHeadQueue: () =>
+          _addToQueue(_selected!.map((e) => widget.items[e].info), true),
+      onTailQueue: () =>
+          _addToQueue(_selected!.map((e) => widget.items[e].info), false),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final locale = AppLocalizations.of(context);
+
     return PopScope(
       canPop: _selected == null,
       onPopInvoked: _willPop,
       child: Scaffold(
         appBar: AppBar(
-          title:
-              Text(widget.title ?? AppLocalizations.of(context).searchResult),
+          title: Text(_selected == null
+              ? widget.title ?? locale.searchResult
+              : locale.selectTracks),
           actions: [
             if (_selected == null)
               IconButton(
                   onPressed: () => setState(() => _selected = []),
                   icon: const Icon(Icons.check_box_outlined))
             else
-              IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
+              IconButton(
+                  onPressed: _openMultipleMenu,
+                  icon: const Icon(Icons.more_vert)),
           ],
         ),
         body: ListView.builder(

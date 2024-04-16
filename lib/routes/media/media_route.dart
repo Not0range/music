@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
@@ -47,6 +49,7 @@ class MediaRouteWrapper extends StatefulWidget {
 
 class _MediaRouteState extends MediaContract
     with MediaPresenter, AutomaticKeepAliveClientMixin {
+  late StreamSubscription _subscription;
   bool _loading = true;
 
   @override
@@ -57,7 +60,26 @@ class _MediaRouteState extends MediaContract
       _load(
           vk: widget.vk && state.vkPlaylists == null,
           youtube: widget.youtube); //TODO check yt playlists
+      _subscription = Player.streamOf(context).listen((cmd) {
+        if (cmd.type == BroadcastCommandType.followPlaylist) {
+          switch (cmd.service) {
+            case Service.vk:
+              _load(youtube: false);
+              break;
+            case Service.youtube:
+              _load(vk: false);
+              break;
+            default:
+          }
+        }
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 
   @override
@@ -101,31 +123,37 @@ class _MediaRouteState extends MediaContract
           item.title,
           Playlist(Service.vk, PlaylistType.album, item.id),
           i.permissions.edit),
-      onPlay: () => _play(item.id),
-      onAddToCurrent: () => _addToCurrent(Service.vk, item.id),
+      onPlay: () => _playPlaylist(PlaylistStartMode.replace, item.id),
+      onAddToCurrent: () => _playPlaylist(PlaylistStartMode.add, item.id),
+      onHeadQueue: () =>
+          () => _playPlaylist(PlaylistStartMode.headQueue, item.id),
+      onTailQueue: () =>
+          () => _playPlaylist(PlaylistStartMode.tailQueue, item.id),
       onRemove: () => _removeQuestion(Service.vk, item.id),
       onEdit: i.permissions.edit ? () => _edit(Service.vk, item) : null,
     );
   }
 
-  void _play([String? id]) {
+  void _playPlaylist(PlaylistStartMode mode, [String? id]) {
     //TODO service dependency
     if (id == null) {
-      getFavoritesVk();
+      getFavoritesVk(mode);
     } else {
       final ids = id.split('_');
-      getFromPlaylistVk(int.parse(ids[1]), ownerId: int.tryParse(ids[0]));
+      getFromPlaylistVk(int.parse(ids[1]), mode, ownerId: int.tryParse(ids[0]));
     }
   }
 
-  void _addToCurrent(Service service, [String? id]) {
-    //TODO service dependency
-    if (id == null) {
-      getFavoritesVk(add: true);
+  void _addToQueue(Iterable<MusicInfo> items, bool head) {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    final bool start;
+    if (head) {
+      start = state.headQueue(items);
     } else {
-      final ids = id.split('_');
-      getFromPlaylistVk(int.parse(ids[1]),
-          ownerId: int.tryParse(ids[0]), add: true);
+      start = state.tailQueue(items);
+    }
+    if (start) {
+      Player.of(context).setSourceUrl(items.first.url);
     }
   }
 
@@ -180,8 +208,13 @@ class _MediaRouteState extends MediaContract
                           AppLocalizations.of(context).myMusic,
                           Playlist(Service.vk, PlaylistType.favorite),
                           true),
-                      onPlay: () => _play(),
-                      onAddToCurrent: () => _addToCurrent(Service.vk),
+                      onPlay: () => _playPlaylist(PlaylistStartMode.replace),
+                      onAddToCurrent: () =>
+                          _playPlaylist(PlaylistStartMode.add),
+                      onHeadQueue: () =>
+                          _playPlaylist(PlaylistStartMode.headQueue),
+                      onTailQueue: () =>
+                          () => _playPlaylist(PlaylistStartMode.tailQueue),
                     )
                   : null,
             ),
@@ -237,8 +270,8 @@ class _MediaRouteState extends MediaContract
   }
 
   @override
-  void onItemsSuccess(List<IMusic> result,
-      {bool add = false, bool favorite = false}) {
+  void onItemsSuccess(List<IMusic> result, PlaylistStartMode mode,
+      {bool favorite = false}) {
     if (!mounted) return;
 
     final List<MusicInfo> items;
@@ -251,22 +284,31 @@ class _MediaRouteState extends MediaContract
     }
 
     final state = Provider.of<PlayerModel>(context, listen: false);
-    if (add) {
-      final empty = state.list.isEmpty;
-      state.insertAll(items);
-      if (empty) {
+    switch (mode) {
+      case PlaylistStartMode.add:
+        final empty = state.list.isEmpty;
+        state.insertAll(items);
+        if (empty) {
+          final item = items[0];
+          state.setItem(item, favorite: favorite ? item.id : '');
+          state.index = 0;
+          Player.of(context).setSource(UrlSource(item.url));
+        }
+        break;
+      case PlaylistStartMode.replace:
+        state.list = items;
+
         final item = items[0];
         state.setItem(item, favorite: favorite ? item.id : '');
         state.index = 0;
-        Player.of(context).setSource(UrlSource(item.url));
-      }
-    } else {
-      state.list = items;
-
-      final item = items[0];
-      state.setItem(item, favorite: favorite ? item.id : '');
-      state.index = 0;
-      Player.of(context).play(UrlSource(item.url));
+        Player.of(context).play(UrlSource(item.url));
+        break;
+      case PlaylistStartMode.headQueue:
+        _addToQueue(items, true);
+        break;
+      case PlaylistStartMode.tailQueue:
+        _addToQueue(items, false);
+        break;
     }
   }
 

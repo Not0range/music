@@ -59,5 +59,8 @@
     "editPlaylist": "Edit playlist",
     "removeFromPlaylist": "Remove from playlist",
     "changeOrder": "Change order",
-    "selectTracks": "Select..."
+    "selectTracks": "Select...",
+    "removeFromCurrent": "Remove from current playlist",
+    "removeFromQueue": "Remove from queue",
+    "clear": "Clear"
 }

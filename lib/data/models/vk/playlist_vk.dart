@@ -33,8 +33,8 @@ class PlaylistVk extends IPlaylist {
   }
 
   @override
-  PlaylistInfo get info => cacheInfo ??= PlaylistInfo('${ownerId}_$id', title,
-      photo, private ? PrivacyType.private : PrivacyType.public);
+  PlaylistInfo get info => cacheInfo ??= PlaylistInfo.vk('${ownerId}_$id',
+      title, photo, private ? PrivacyType.private : PrivacyType.public);
 }
 
 class PlaylistPermissionsVk {
@@ -50,5 +50,16 @@ class PlaylistPermissionsVk {
   factory PlaylistPermissionsVk.fromJson(JsonMap json) {
     return PlaylistPermissionsVk(json['play'], json['share'], json['edit'],
         json['follow'], json['delete']);
+  }
+}
+
+class PlaylistFollowVk {
+  final int playlistId;
+  final int ownerId;
+
+  PlaylistFollowVk(this.playlistId, this.ownerId);
+
+  factory PlaylistFollowVk.fromJson(JsonMap json) {
+    return PlaylistFollowVk(json['playlist_id'], json['owner_id']);
   }
 }

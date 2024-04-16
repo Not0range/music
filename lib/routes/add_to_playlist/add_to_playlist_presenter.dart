@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:music/data/models/vk/playlist_vk.dart';
 import 'package:music/data/repository.dart';
+import 'package:music/utils/service.dart';
 
 import 'add_to_playlist_route.dart';
 
 abstract class AddToPlaylistContract extends State<AddToPlaylistRouteWrapper> {
   void onSuccessVk(List<PlaylistVk> result);
-  void onSuccessAdded(String playlistId);
+  void onSuccessAdded(Service service, String playlistId);
 }
 
 mixin AddToPlaylistPresenter on AddToPlaylistContract {
@@ -22,7 +23,7 @@ mixin AddToPlaylistPresenter on AddToPlaylistContract {
     try {
       final r = Repository.vkOf(context);
       await r.addToPlaylist(context, ownerId, playlistId, audioId);
-      onSuccessAdded('${ownerId}_$playlistId');
+      onSuccessAdded(Service.vk, '${ownerId}_$playlistId');
     } catch (e) {}
   }
 }

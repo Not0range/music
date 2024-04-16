@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:music/data/repository.dart';
 import 'package:music/routes/playlist/playlist_route.dart';
+import 'package:music/utils/service.dart';
 import 'package:music/utils/utils.dart';
 
 abstract class PlaylistContract extends State<PlaylistRoute> {
   void onSuccess(List<IMusic> result);
-  void onFavoriteSuccess(bool added);
+  void onFavoriteSuccess(Service service, bool added);
   void onEditSuccess();
   void onError(String error);
 }
@@ -24,7 +25,7 @@ mixin PlaylistPresenter on PlaylistContract {
     try {
       final r = Repository.vkOf(context);
       onSuccess(
-          await r.getUserMusic(context, ownerId: ownerId, albumId: albumId));
+          await r.getUserMusic(context, ownerId: ownerId, playlistId: albumId));
     } catch (e) {
       onError(e.toString());
     }
@@ -43,7 +44,7 @@ mixin PlaylistPresenter on PlaylistContract {
     try {
       final r = Repository.vkOf(context);
       await r.addToFavorite(context, ownerId, id);
-      onFavoriteSuccess(true);
+      onFavoriteSuccess(Service.vk, true);
     } catch (e) {}
   }
 
@@ -51,7 +52,7 @@ mixin PlaylistPresenter on PlaylistContract {
     try {
       final r = Repository.vkOf(context);
       await r.removeFromFavorite(context, ownerId, id);
-      onFavoriteSuccess(false);
+      onFavoriteSuccess(Service.vk, false);
     } catch (e) {}
   }
 

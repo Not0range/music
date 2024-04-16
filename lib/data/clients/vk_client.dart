@@ -87,10 +87,10 @@ class VkClient {
   }
 
   Future<List<MusicVk>> getUserMusic(BuildContext context,
-      {int? ownerId, int? albumId}) async {
+      {int? ownerId, int? playlistId}) async {
     final JsonMap params = {'access_token': _token(context)};
     if (ownerId != null) params['owner_id'] = ownerId;
-    if (albumId != null) params['album_id'] = albumId;
+    if (playlistId != null) params['album_id'] = playlistId;
 
     final data = (await _dio.get('audio.get', queryParameters: params)).data;
     final res = ResponseVk.fromJson(
@@ -169,7 +169,7 @@ class VkClient {
     return res.response!.items;
   }
 
-  Future<PlaylistVk> addPlaylist(
+  Future<PlaylistVk> createPlaylist(
       BuildContext context, int ownerId, String title, bool private) async {
     final data = (await _dio.get('audio.createPlaylist', queryParameters: {
       'access_token': _token(context),
@@ -229,6 +229,19 @@ class VkClient {
     final res = ResponseVk.fromJson(data, (e) => e as int);
     if (res.error != null) throw res.error!.message;
     return res.response == 1;
+  }
+
+  Future<PlaylistFollowVk> followPlaylist(
+      BuildContext context, int ownerId, int playlistId) async {
+    final data = (await _dio.get('audio.followPlaylist', queryParameters: {
+      'access_token': _token(context),
+      'owner_id': ownerId,
+      'playlist_id': playlistId
+    }))
+        .data;
+    final res = ResponseVk.fromJson(data, (e) => PlaylistFollowVk.fromJson(e));
+    if (res.error != null) throw res.error!.message;
+    return res.response!;
   }
 
   Future<List<MusicVk>> getRecommended(BuildContext context,

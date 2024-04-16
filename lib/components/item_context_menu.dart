@@ -5,28 +5,32 @@ import 'package:music/utils/utils.dart';
 import 'net_image.dart';
 
 class ItemContextMenu extends StatelessWidget {
-  final MusicInfo info;
+  final MusicInfo? info;
   final bool favorite;
   final VoidCallback? onPlay;
   final VoidCallback? onHeadQueue;
   final VoidCallback? onTailQueue;
+  final VoidCallback? onRemoveFromQueue;
   final VoidCallback? onToggleMyMusic;
   final VoidCallback? onToggleLike;
   final VoidCallback? onAddToPlaylist;
+  final VoidCallback? onRemoveFromCurrent;
   final VoidCallback? onSearchRelated;
   final VoidCallback? onShare;
   final VoidCallback? onRemoveFromPlaylist;
 
   const ItemContextMenu(
       {super.key,
-      required this.info,
+      this.info,
       this.favorite = false,
       this.onPlay,
       this.onHeadQueue,
       this.onTailQueue,
+      this.onRemoveFromQueue,
       this.onToggleMyMusic,
       this.onToggleLike,
       this.onAddToPlaylist,
+      this.onRemoveFromCurrent,
       this.onSearchRelated,
       this.onShare,
       this.onRemoveFromPlaylist});
@@ -42,11 +46,12 @@ class ItemContextMenu extends StatelessWidget {
 
     return Column(
       children: [
-        _Preview(
-          artist: info.artist,
-          title: info.title,
-          img: info.coverSmall,
-        ),
+        if (info != null)
+          _Preview(
+            artist: info!.artist,
+            title: info!.title,
+            img: info!.coverSmall,
+          ),
         Expanded(
           child: Container(
             decoration: BoxDecoration(
@@ -75,6 +80,12 @@ class ItemContextMenu extends StatelessWidget {
                     title: Text(locale.tailQueue),
                     onTap: () => _onTap(context, onTailQueue),
                   ),
+                if (onRemoveFromQueue != null)
+                  ListTile(
+                    leading: const Icon(Icons.playlist_remove),
+                    title: Text(locale.removeFromQueue),
+                    onTap: () => _onTap(context, onRemoveFromQueue),
+                  ),
                 if (onToggleMyMusic != null)
                   ListTile(
                     leading:
@@ -90,27 +101,36 @@ class ItemContextMenu extends StatelessWidget {
                     title: Text(favorite ? locale.dislike : locale.like),
                     onTap: () => _onTap(context, onToggleLike),
                   ),
-                ListTile(
-                  leading: const Icon(Icons.playlist_add),
-                  title: Text(locale.addToPlaylist),
-                  onTap: () => _onTap(context, onAddToPlaylist),
-                ),
+                if (onAddToPlaylist != null)
+                  ListTile(
+                    leading: const Icon(Icons.playlist_add),
+                    title: Text(locale.addToPlaylist),
+                    onTap: () => _onTap(context, onAddToPlaylist),
+                  ),
                 if (onRemoveFromPlaylist != null)
                   ListTile(
                     leading: const Icon(Icons.playlist_remove),
                     title: Text(locale.removeFromPlaylist),
                     onTap: () => _onTap(context, onRemoveFromPlaylist),
                   ),
-                ListTile(
-                  leading: const Icon(Icons.manage_search),
-                  title: Text(locale.searchRelated),
-                  onTap: () => _onTap(context, onSearchRelated),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.reply),
-                  title: Text(locale.share),
-                  onTap: () => _onTap(context, onShare),
-                ),
+                if (onRemoveFromCurrent != null)
+                  ListTile(
+                    leading: const Icon(Icons.playlist_remove),
+                    title: Text(locale.removeFromCurrent),
+                    onTap: () => _onTap(context, onRemoveFromCurrent),
+                  ),
+                if (onSearchRelated != null)
+                  ListTile(
+                    leading: const Icon(Icons.manage_search),
+                    title: Text(locale.searchRelated),
+                    onTap: () => _onTap(context, onSearchRelated),
+                  ),
+                if (onShare != null)
+                  ListTile(
+                    leading: const Icon(Icons.reply),
+                    title: Text(locale.share),
+                    onTap: () => _onTap(context, onShare),
+                  ),
               ],
             ),
           ),

@@ -57,14 +57,16 @@ void openSettings(BuildContext context) {
       builder: (ctx) => const SettingsRoute());
 }
 
-void openItemMenu(BuildContext context, MusicInfo info,
+void openItemMenu(BuildContext context, MusicInfo? info,
     {bool favorite = false,
     VoidCallback? onPlay,
     VoidCallback? onHeadQueue,
     VoidCallback? onTailQueue,
+    VoidCallback? onRemoveFromQueue,
     VoidCallback? onToggleMyMusic,
     VoidCallback? onToggleLike,
     VoidCallback? onAddToPlaylist,
+    VoidCallback? onRemoveFromCurrent,
     VoidCallback? onRemoveFromPlaylist,
     VoidCallback? onSearchRelated,
     VoidCallback? onShare}) {
@@ -82,10 +84,12 @@ void openItemMenu(BuildContext context, MusicInfo info,
           onPlay: onPlay,
           onHeadQueue: onHeadQueue,
           onTailQueue: onTailQueue,
+          onRemoveFromQueue: onRemoveFromQueue,
           onToggleMyMusic: onToggleMyMusic,
           onToggleLike: onToggleLike,
           onAddToPlaylist: onAddToPlaylist,
           onRemoveFromPlaylist: onRemoveFromPlaylist,
+          onRemoveFromCurrent: onRemoveFromCurrent,
           onSearchRelated: onSearchRelated,
           onShare: onShare));
 }
@@ -95,6 +99,8 @@ void openPlaylistMenu(
     {String? img,
     VoidCallback? onPlay,
     VoidCallback? onAddToCurrent,
+    VoidCallback? onHeadQueue,
+    VoidCallback? onTailQueue,
     VoidCallback? onRemove,
     VoidCallback? onEdit,
     VoidCallback? onFollow}) {
@@ -113,6 +119,8 @@ void openPlaylistMenu(
             img: img,
             onPlay: onPlay,
             onAddToCurrent: onAddToCurrent,
+            onHeadQueue: onHeadQueue,
+            onTailQueue: onTailQueue,
             onRemove: onRemove,
             onEdit: onEdit,
             onFollow: onFollow,

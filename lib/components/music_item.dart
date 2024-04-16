@@ -25,6 +25,8 @@ class MusicItem extends StatelessWidget {
   final Proc1<bool>? addToQueue;
   final VoidCallback? addToPlaylist;
   final VoidCallback? removeFromPlaylist;
+  final VoidCallback? removeFromQueue;
+  final VoidCallback? removeFromCurrent;
   final int? reorderableIndex;
   final bool useContextMenu;
   final bool selected;
@@ -43,6 +45,8 @@ class MusicItem extends StatelessWidget {
     this.addToQueue,
     this.addToPlaylist,
     this.removeFromPlaylist,
+    this.removeFromQueue,
+    this.removeFromCurrent,
     this.reorderableIndex,
     this.useContextMenu = true,
     this.selected = false,
@@ -60,6 +64,8 @@ class MusicItem extends StatelessWidget {
         addToQueue = null,
         addToPlaylist = null,
         removeFromPlaylist = null,
+        removeFromQueue = null,
+        removeFromCurrent = null,
         reorderableIndex = null,
         useContextMenu = false,
         selected = false,
@@ -81,8 +87,9 @@ class MusicItem extends StatelessWidget {
         context, MusicInfo(id, artist, title, '', 0, false, img, img, type),
         favorite: favorite,
         onPlay: onPlay,
-        onHeadQueue: () => addToQueue?.call(true),
-        onTailQueue: () => addToQueue?.call(false),
+        onHeadQueue: addToQueue != null ? () => addToQueue?.call(true) : null,
+        onTailQueue: addToQueue != null ? () => addToQueue?.call(false) : null,
+        onRemoveFromQueue: removeFromQueue,
         onToggleMyMusic: onToggleFavorite != null && type != Service.youtube
             ? () => onToggleFavorite?.call(id)
             : null,
@@ -91,6 +98,7 @@ class MusicItem extends StatelessWidget {
             : null,
         onAddToPlaylist: addToPlaylist,
         onRemoveFromPlaylist: removeFromPlaylist,
+        onRemoveFromCurrent: removeFromCurrent,
         onSearchRelated: () => _searchRelated(context),
         onShare: _share);
   }

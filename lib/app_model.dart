@@ -237,19 +237,19 @@ class PlayerModel extends ChangeNotifier {
   ///Ставит трек в начало очереди \
   ///Возвращается true при пустом списке воспроизведения
   ///предполагается выбор указанного трека как текущего
-  bool headQueue(MusicInfo item) {
+  bool headQueue(Iterable<MusicInfo> items) {
     if (_index == null) {
-      _id = item.id;
-      _service = item.type;
-      _favorite = '${item.extra?['favorite'] ?? ''}';
+      _id = items.first.id;
+      _service = items.first.type;
+      _favorite = '${items.first.extra?['favorite'] ?? ''}';
 
-      _artist = item.artist;
-      _title = item.title;
-      _img = item.coverBig;
+      _artist = items.first.artist;
+      _title = items.first.title;
+      _img = items.first.coverBig;
       notifyListeners();
       return true;
     }
-    _queue.insert(0, item);
+    _queue.insertAll(0, items);
     notifyListeners();
     return false;
   }
@@ -257,19 +257,19 @@ class PlayerModel extends ChangeNotifier {
   ///Ставит трек в конец очереди \
   ///Возвращается true при пустом списке воспроизведения
   ///предполагается выбор указанного трека как текущего
-  bool tailQueue(MusicInfo item) {
+  bool tailQueue(Iterable<MusicInfo> items) {
     if (_index == null) {
-      _id = item.id;
-      _service = item.type;
-      _favorite = '${item.extra?['favorite'] ?? ''}';
+      _id = items.first.id;
+      _service = items.first.type;
+      _favorite = '${items.first.extra?['favorite'] ?? ''}';
 
-      _artist = item.artist;
-      _title = item.title;
-      _img = item.coverBig;
+      _artist = items.first.artist;
+      _title = items.first.title;
+      _img = items.first.coverBig;
       notifyListeners();
       return true;
     }
-    _queue.add(item);
+    _queue.addAll(items);
     notifyListeners();
     return false;
   }
@@ -306,6 +306,14 @@ class PlayerModel extends ChangeNotifier {
     } else {
       notifyListeners();
     }
+  }
+
+  void removeAt(int index) {
+    final list = _shuffled ?? _list;
+    list.removeAt(index);
+
+    if (_index! > index) _index = _index! - 1;
+    notifyListeners();
   }
 
   void replace(MusicInfo item, [int? index]) {

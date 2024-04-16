@@ -9,10 +9,12 @@ import 'package:music/data/repository.dart';
 import 'package:music/routes/tabs/tabs_route.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:music/utils/service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'components/player.dart';
+import 'utils/utils.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +48,8 @@ class _MainAppState extends State<MainApp> {
   late final StreamSubscription _stateSub;
   late final StreamSubscription _completeSub;
 
+  final controller = StreamController<BroadcastCommand>.broadcast();
+
   @override
   void initState() {
     super.initState();
@@ -68,6 +72,7 @@ class _MainAppState extends State<MainApp> {
     _completeSub.cancel();
 
     player.dispose();
+    controller.close();
 
     super.dispose();
   }
@@ -99,7 +104,12 @@ class _MainAppState extends State<MainApp> {
       state.index = i;
       final item = (state.shuffled ?? state.list)[i];
       state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
-      player.play(UrlSource(item.url));
+      if (item.url.isNotEmpty) {
+        player.play(UrlSource(item.url));
+      } else {
+        controller
+            .add(BroadcastCommand(BroadcastCommandType.needUrl, item.type));
+      }
     });
   }
 
@@ -110,6 +120,7 @@ class _MainAppState extends State<MainApp> {
       _ytClient,
       child: Player(
         player,
+        controller,
         child: MaterialApp(
           title: 'Music',
           theme: ThemeData(

@@ -14,6 +14,8 @@ class PlaylistItem extends StatelessWidget {
   final PlaylistItemType type;
   final VoidCallback? onPlay;
   final VoidCallback? onAddToCurrent;
+  final VoidCallback? onHeadQueue;
+  final VoidCallback? onTailQueue;
   final VoidCallback? onRemove;
   final VoidCallback? onEdit;
   final VoidCallback? onFollow;
@@ -28,6 +30,8 @@ class PlaylistItem extends StatelessWidget {
       required this.type,
       this.onPlay,
       this.onAddToCurrent,
+      this.onHeadQueue,
+      this.onTailQueue,
       this.onRemove,
       this.onEdit,
       this.onFollow})
@@ -40,6 +44,8 @@ class PlaylistItem extends StatelessWidget {
         service = null,
         onPlay = null,
         onAddToCurrent = null,
+        onHeadQueue = null,
+        onTailQueue = null,
         onRemove = null,
         onEdit = null,
         onFollow = null,
@@ -84,6 +90,8 @@ class PlaylistItem extends StatelessWidget {
       img: leading,
       onPlay: onPlay,
       onAddToCurrent: onAddToCurrent,
+      onHeadQueue: onHeadQueue,
+      onTailQueue: onTailQueue,
       onRemove: onRemove,
       onEdit: onEdit,
       onFollow: onFollow,

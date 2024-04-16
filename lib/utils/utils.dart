@@ -100,6 +100,30 @@ class PlaylistInfo {
   final String title;
   final String cover;
   final PrivacyType privacy;
+  final Service type;
 
-  PlaylistInfo(this.id, this.title, this.cover, this.privacy);
+  PlaylistInfo(this.id, this.title, this.cover, this.privacy, this.type);
+
+  PlaylistInfo.vk(this.id, this.title, this.cover, this.privacy)
+      : type = Service.vk;
+
+  PlaylistInfo.youtube(this.id, this.title, this.cover, this.privacy)
+      : type = Service.youtube;
+}
+
+enum PlaylistStartMode { replace, add, headQueue, tailQueue }
+
+class BroadcastCommand {
+  final BroadcastCommandType type;
+  final Service service;
+  final JsonMap? params;
+
+  BroadcastCommand(this.type, this.service, [this.params]);
+}
+
+enum BroadcastCommandType {
+  changeFavorites,
+  followPlaylist,
+  addToPlaylist,
+  needUrl
 }

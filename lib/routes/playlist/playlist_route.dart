@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
@@ -30,6 +32,8 @@ class PlaylistRoute extends StatefulWidget {
 }
 
 class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
+  late StreamSubscription _subscription;
+
   List<IMusic> _items = [];
   bool _loading = true;
 
@@ -46,7 +50,29 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
     super.initState();
     Future.delayed(Duration.zero, () {
       _load();
+      if (widget.playlist.type == PlaylistType.favorite) {
+        _subscription = Player.streamOf(context).listen((cmd) {
+          if (cmd.type == BroadcastCommandType.changeFavorites &&
+              cmd.service == widget.playlist.service) {
+            _load();
+          }
+        });
+      } else {
+        _subscription = Player.streamOf(context).listen((cmd) {
+          if (cmd.type == BroadcastCommandType.addToPlaylist &&
+              cmd.service == widget.playlist.service &&
+              cmd.params?['playlistId'] == widget.playlist.id) {
+            _load();
+          }
+        });
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -87,8 +113,9 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
           _selected == null ? () => _play(item, i) : () => _toggleSelected(i),
       favorite: favorite,
       onToggleFavorite: (id) => _favoriteVk(!favorite, id),
-      addToQueue: (h) => _addToQueue(item, h),
-      addToPlaylist: () => _addToVkPlaylist(item.id),
+      addToQueue: (h) => _addToQueue([item], h),
+      addToPlaylist: () =>
+          showAddToPlaylistDialog(context, item.id, widget.playlist.service),
       removeFromPlaylist: widget.editable && _type == PlaylistType.album
           ? () => _removeItem(i)
           : null,
@@ -128,20 +155,32 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
     Player.of(context).play(UrlSource(item.url));
   }
 
-  void _addToQueue(MusicInfo item, bool head) {
+  void _playMultiple(Iterable<MusicInfo> items) {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    state.setItem(items.first);
+
     if (_type == PlaylistType.favorite) {
-      item = item.copyWith(extra: {'favorite': item.id}); //TODO yt
+      items = items.map((e) => e.copyWith(extra: {'favorite': e.id})).toList();
+    }
+
+    state.list = items.toList();
+    Player.of(context).play(UrlSource(items.first.url));
+  }
+
+  void _addToQueue(Iterable<MusicInfo> items, bool head) {
+    if (_type == PlaylistType.favorite) {
+      items = items.map((e) => e.copyWith(extra: {'favorite': e.id})); //TODO yt
     }
 
     final state = Provider.of<PlayerModel>(context, listen: false);
     final bool start;
     if (head) {
-      start = state.headQueue(item);
+      start = state.headQueue(items);
     } else {
-      start = state.tailQueue(item);
+      start = state.tailQueue(items);
     }
     if (start) {
-      Player.of(context).setSourceUrl(item.url);
+      Player.of(context).setSourceUrl(items.first.url);
     }
   }
 
@@ -152,12 +191,6 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
     } else {
       removeVk(ids[0], ids[1]);
     }
-  }
-
-  Future<void> _addToVkPlaylist(String id) async {
-    final result =
-        await showAddToPlaylistDialog(context, id, widget.playlist.service);
-    if (result == widget.playlist.id) _load();
   }
 
   void _swap(int oldIndex, int newIndex) {
@@ -228,6 +261,18 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
     }
   }
 
+  void _openMultipleMenu() {
+    openItemMenu(
+      context,
+      null,
+      onPlay: () => _playMultiple(_selected!.map((e) => _items[e].info)),
+      onHeadQueue: () =>
+          _addToQueue(_selected!.map((e) => _items[e].info), true),
+      onTailQueue: () =>
+          _addToQueue(_selected!.map((e) => _items[e].info), false),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = AppLocalizations.of(context);
@@ -270,9 +315,12 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
               ),
             if (!_changingOrder && !widget.editable && _selected == null)
               IconButton(
-                  onPressed: () {}, icon: const Icon(Icons.check_box_outlined)),
+                  onPressed: () => setState(() => _selected = []),
+                  icon: const Icon(Icons.check_box_outlined)),
             if (_selected != null)
-              IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
+              IconButton(
+                  onPressed: _openMultipleMenu,
+                  icon: const Icon(Icons.more_vert)),
           ],
         ),
         body: Shimmer(
@@ -292,9 +340,9 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
   }
 
   @override
-  void onFavoriteSuccess(bool added) {
-    if (_type == PlaylistType.favorite) _load();
-    //TODO: implement onFavoriteSuccess
+  void onFavoriteSuccess(Service service, bool added) {
+    Player.sendCommand(context,
+        BroadcastCommand(BroadcastCommandType.changeFavorites, service));
   }
 
   @override

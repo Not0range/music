@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
+import 'package:music/components/player.dart';
 import 'package:music/components/playlist_item.dart';
 import 'package:music/data/models/vk/playlist_vk.dart';
 import 'package:music/utils/service.dart';
@@ -135,8 +136,12 @@ class _AddToPlaylistRouteWrapperState extends AddToPlaylistContract
   }
 
   @override
-  void onSuccessAdded(String playlistId) {
+  void onSuccessAdded(Service service, String playlistId) {
     if (!mounted) return;
-    Navigator.pop(context, playlistId);
+    Player.sendCommand(
+        context,
+        BroadcastCommand(BroadcastCommandType.addToPlaylist, service,
+            {'playlistId': playlistId}));
+    Navigator.pop(context);
   }
 }

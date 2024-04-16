@@ -59,16 +59,16 @@ class ResultCategory extends StatelessWidget {
     Player.of(context).play(UrlSource(item.url));
   }
 
-  void _addToQueue(BuildContext context, MusicInfo item, bool head) {
+  void _addToQueue(BuildContext context, Iterable<MusicInfo> items, bool head) {
     final state = Provider.of<PlayerModel>(context, listen: false);
     final bool start;
     if (head) {
-      start = state.headQueue(item);
+      start = state.headQueue(items);
     } else {
-      start = state.tailQueue(item);
+      start = state.tailQueue(items);
     }
     if (start) {
-      Player.of(context).setSourceUrl(item.url);
+      Player.of(context).setSourceUrl(items.first.url);
     }
   }
 
@@ -79,8 +79,8 @@ class ResultCategory extends StatelessWidget {
   void _openMenu(BuildContext context, MusicInfo info, int index) {
     openItemMenu(context, info,
         onPlay: () => _play(context, info, index),
-        onHeadQueue: () => _addToQueue(context, info, true),
-        onTailQueue: () => _addToQueue(context, info, false),
+        onHeadQueue: () => _addToQueue(context, [info], true),
+        onTailQueue: () => _addToQueue(context, [info], false),
         onToggleMyMusic: addToFavorite != null && type != Service.youtube
             ? () => addToFavorite?.call(info.id)
             : null,
@@ -161,6 +161,8 @@ class ResultCategory extends StatelessWidget {
       PlaylistItemType.music,
       onPlay: () => _play(context, items[0].info, 0),
       onAddToCurrent: () => _addToCurrent(context),
+      onHeadQueue: () => _addToQueue(context, items.map((e) => e.info), true),
+      onTailQueue: () => _addToQueue(context, items.map((e) => e.info), false),
     );
   }
 

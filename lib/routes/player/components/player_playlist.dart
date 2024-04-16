@@ -50,6 +50,7 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
   }
 
   Widget _builder(BuildContext context, ScrollController controller) {
+    final locale = AppLocalizations.of(context);
     final t = Theme.of(context);
     final bg = t.scaffoldBackgroundColor;
 
@@ -97,9 +98,20 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
                             child: Container(
                           padding: const EdgeInsets.all(8),
                           color: bg.withOpacity(0.5),
-                          child: Text(
-                            AppLocalizations.of(context).queue,
-                            style: t.textTheme.bodyLarge,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                locale.queue,
+                                style: t.textTheme.bodyLarge,
+                              ),
+                              InkWell(
+                                  onTap: () => state.queue = [],
+                                  child: Text(
+                                    locale.clear,
+                                    style: t.textTheme.bodyLarge,
+                                  ))
+                            ],
                           ),
                         )),
                         SliverReorderableList(
@@ -113,7 +125,7 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
                         padding: const EdgeInsets.all(8),
                         color: bg.withOpacity(0.5),
                         child: Text(
-                          AppLocalizations.of(context).playlist,
+                          locale.playlist,
                           style: t.textTheme.bodyLarge,
                         ),
                       )),
@@ -135,6 +147,15 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
     );
   }
 
+  void _addToQueue(MusicInfo item, bool head) {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    if (head) {
+      state.headQueue([item]);
+    } else {
+      state.tailQueue([item]);
+    }
+  }
+
   Widget _queueBuilder(PlayerModel state, int i) {
     final item = state.queue[i];
     return Material(
@@ -144,10 +165,11 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
         id: item.id,
         artist: item.artist,
         title: item.title,
-        type: state.service ?? Service.local,
+        type: item.type,
         img: item.coverSmall,
         reorderableIndex: i,
         onPlay: () => _playQueue(i),
+        removeFromQueue: () => state.enqueue(i),
       ),
     );
   }
@@ -164,10 +186,12 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
         id: item.id,
         artist: item.artist,
         title: item.title,
-        type: state.service ?? Service.local,
+        type: item.type,
         img: item.coverSmall,
         reorderableIndex: i,
         onPlay: () => _play(item, index, controller),
+        addToQueue: (h) => _addToQueue(item, h),
+        removeFromCurrent: () => state.removeAt(index),
       ),
     );
   }

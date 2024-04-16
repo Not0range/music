@@ -62,7 +62,7 @@ class _UserRouteState extends UserContract with UserPresenter {
       type: _type,
       onPlay:
           _selected == null ? () => _play(item, i) : () => _toggleSelected(i),
-      addToQueue: (h) => _addToQueue(item, h),
+      addToQueue: (h) => _addToQueue([item], h),
       onToggleFavorite: _favoriteVk,
       addToPlaylist: () => _addToVkPlaylist(item.id),
       selected: _selected?.contains(i) ?? false,
@@ -88,16 +88,24 @@ class _UserRouteState extends UserContract with UserPresenter {
     Player.of(context).play(UrlSource(item.url));
   }
 
-  void _addToQueue(MusicInfo item, bool head) {
+  void _playMultiple(Iterable<MusicInfo> items) {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    state.setItem(items.first);
+
+    state.list = items.toList();
+    Player.of(context).play(UrlSource(items.first.url));
+  }
+
+  void _addToQueue(Iterable<MusicInfo> items, bool head) {
     final state = Provider.of<PlayerModel>(context, listen: false);
     final bool start;
     if (head) {
-      start = state.headQueue(item);
+      start = state.headQueue(items);
     } else {
-      start = state.tailQueue(item);
+      start = state.tailQueue(items);
     }
     if (start) {
-      Player.of(context).setSourceUrl(item.url);
+      Player.of(context).setSourceUrl(items.first.url);
     }
   }
 
@@ -127,6 +135,18 @@ class _UserRouteState extends UserContract with UserPresenter {
     setState(() => _selected = null);
   }
 
+  void _openMultipleMenu() {
+    openItemMenu(
+      context,
+      null,
+      onPlay: () => _playMultiple(_selected!.map((e) => _items[e].info)),
+      onHeadQueue: () =>
+          _addToQueue(_selected!.map((e) => _items[e].info), true),
+      onTailQueue: () =>
+          _addToQueue(_selected!.map((e) => _items[e].info), false),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = AppLocalizations.of(context);
@@ -143,7 +163,9 @@ class _UserRouteState extends UserContract with UserPresenter {
                   onPressed: () => setState(() => _selected = []),
                   icon: const Icon(Icons.check_box_outlined))
             else
-              IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
+              IconButton(
+                  onPressed: _openMultipleMenu,
+                  icon: const Icon(Icons.more_vert)),
           ],
         ),
         body: Shimmer(
@@ -160,6 +182,11 @@ class _UserRouteState extends UserContract with UserPresenter {
                       child: PlaylistsCarousel(
                         items: _playlists,
                         loading: _loading,
+                        onPlay: (i) =>
+                            _playPlaylist(i.id, PlaylistStartMode.replace),
+                        addToCurrent: (i) =>
+                            _playPlaylist(i.id, PlaylistStartMode.add),
+                        onFollow: _follow,
                       ),
                     ),
                     SliverList.builder(
@@ -169,6 +196,18 @@ class _UserRouteState extends UserContract with UserPresenter {
                 ))),
       ),
     );
+  }
+
+  void _playPlaylist(String id, PlaylistStartMode mode) {
+    //TODO service dependency
+    final ids = id.split('_');
+    getFromPlaylistVk(int.parse(ids[1]), mode, ownerId: int.tryParse(ids[0]));
+  }
+
+  void _follow(PlaylistInfo info) {
+    //TODO service dependency
+    final ids = info.id.split('_').map((e) => int.parse(e)).toList();
+    followPlaylistVk(ids[0], ids[1]);
   }
 
   @override
@@ -193,5 +232,46 @@ class _UserRouteState extends UserContract with UserPresenter {
   @override
   void onError(String error) {
     // TODO: implement onError
+  }
+
+  @override
+  void onItemsSuccess(List<IMusic> result, PlaylistStartMode mode) {
+    if (!mounted) return;
+
+    final List<MusicInfo> items = result.map((e) => e.info).toList();
+
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    switch (mode) {
+      case PlaylistStartMode.replace:
+        state.list = items;
+
+        final item = items[0];
+        state.setItem(item);
+        state.index = 0;
+        Player.of(context).play(UrlSource(item.url));
+        break;
+      case PlaylistStartMode.add:
+        final empty = state.list.isEmpty;
+        state.insertAll(items);
+        if (empty) {
+          final item = items[0];
+          state.setItem(item);
+          state.index = 0;
+          Player.of(context).setSource(UrlSource(item.url));
+        }
+        break;
+      case PlaylistStartMode.headQueue:
+        _addToQueue(items, true);
+        break;
+      case PlaylistStartMode.tailQueue:
+        _addToQueue(items, false);
+        break;
+    }
+  }
+
+  @override
+  void onFollowSuccess(Service service) {
+    Player.sendCommand(context,
+        BroadcastCommand(BroadcastCommandType.followPlaylist, service));
   }
 }

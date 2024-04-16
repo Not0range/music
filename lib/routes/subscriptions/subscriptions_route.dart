@@ -1,11 +1,14 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
+import 'package:music/components/player.dart';
 import 'package:music/data/models/vk/group_vk.dart';
 import 'package:music/data/models/vk/user_vk.dart';
 import 'package:music/components/playlist_item.dart';
 import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
 import 'package:music/utils/service_objects.dart';
+import 'package:music/utils/utils.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -158,6 +161,37 @@ class _SubscriptionsRouteState extends SubscriptionsContract
     setState(() {
       _groups = groups;
     });
+  }
+
+  @override
+  void onItemsSuccess(List<IMusic> result, {bool add = false}) {
+    if (!mounted) return;
+
+    final List<MusicInfo> items = result.map((e) => e.info).toList();
+
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    if (add) {
+      final empty = state.list.isEmpty;
+      state.insertAll(items);
+      if (empty) {
+        final item = items[0];
+        state.setItem(item);
+        state.index = 0;
+        Player.of(context).setSource(UrlSource(item.url));
+      }
+    } else {
+      state.list = items;
+
+      final item = items[0];
+      state.setItem(item);
+      state.index = 0;
+      Player.of(context).play(UrlSource(item.url));
+    }
+  }
+
+  @override
+  void onError(String error) {
+    // TODO: implement onError
   }
 
   @override
