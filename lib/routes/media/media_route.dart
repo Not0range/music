@@ -125,10 +125,8 @@ class _MediaRouteState extends MediaContract
           i.permissions.edit),
       onPlay: () => _playPlaylist(PlaylistStartMode.replace, item.id),
       onAddToCurrent: () => _playPlaylist(PlaylistStartMode.add, item.id),
-      onHeadQueue: () =>
-          () => _playPlaylist(PlaylistStartMode.headQueue, item.id),
-      onTailQueue: () =>
-          () => _playPlaylist(PlaylistStartMode.tailQueue, item.id),
+      onHeadQueue: () => _playPlaylist(PlaylistStartMode.headQueue, item.id),
+      onTailQueue: () => _playPlaylist(PlaylistStartMode.tailQueue, item.id),
       onRemove: () => _removeQuestion(Service.vk, item.id),
       onEdit: i.permissions.edit ? () => _edit(Service.vk, item) : null,
     );
