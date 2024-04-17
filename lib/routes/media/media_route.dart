@@ -49,7 +49,7 @@ class MediaRouteWrapper extends StatefulWidget {
 
 class _MediaRouteState extends MediaContract
     with MediaPresenter, AutomaticKeepAliveClientMixin {
-  late StreamSubscription _subscription;
+  late final StreamSubscription _subscription;
   bool _loading = true;
 
   @override

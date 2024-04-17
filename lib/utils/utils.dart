@@ -93,6 +93,31 @@ class MusicInfo {
         type,
         extra: extra ?? this.extra);
   }
+
+  factory MusicInfo.fromJson(JsonMap json) {
+    return MusicInfo(
+        json['id'],
+        json['artist'],
+        json['title'],
+        json['url'] ?? '',
+        json['duration'],
+        json['lyrics'] ?? false,
+        json['coverSmall'],
+        json['coverBig'],
+        Service.values[json['type']]);
+  }
+
+  JsonMap toJson() {
+    return {
+      'id': id,
+      'artist': artist,
+      'title': title,
+      'duration': duration,
+      'coverSmall': coverSmall,
+      'coverBig': coverBig,
+      'type': type.index
+    };
+  }
 }
 
 class PlaylistInfo {
@@ -127,3 +152,5 @@ enum BroadcastCommandType {
   addToPlaylist,
   needUrl
 }
+
+enum ChangePlayableType { list, queue, shuffled, trackIndex }

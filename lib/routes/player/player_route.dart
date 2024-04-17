@@ -27,7 +27,7 @@ class PlayerRoute extends StatefulWidget {
 }
 
 class _PlayerRouteState extends PlayerContract with PlayerPresenter {
-  late StreamSubscription _subscription;
+  late final StreamSubscription _subscription;
 
   final _controller = DraggableScrollableController();
   final _playlistController = DraggableScrollableController();
@@ -44,7 +44,7 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
           final id = Provider.of<PlayerModel>(context, listen: false).id!;
           switch (cmd.service) {
             case Service.vk:
-              getByIdVk(id);
+              getByIdVk(cmd.params?['fromQueue'] == true, id);
               break;
             default:
           }
@@ -324,7 +324,14 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
     final item = (state.shuffled ?? state.list)[i];
     state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
 
-    Player.of(context).play(UrlSource(item.url));
+    if (item.url.isNotEmpty) {
+      Player.of(context).play(UrlSource(item.url));
+    } else {
+      Player.sendCommand(
+          context,
+          BroadcastCommand(
+              BroadcastCommandType.needUrl, item.type, {'fromQueue': false}));
+    }
   }
 
   void _next() {
@@ -338,17 +345,26 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
     }
 
     final MusicInfo item;
+    final bool fromQueue;
     if (state.queue.isNotEmpty) {
       item = state.enqueue();
-      state.fromQueue = true;
+      fromQueue = true;
     } else {
       if (state.index == null) return;
       item = (state.shuffled ?? state.list)[state.index!];
-      state.fromQueue = false;
+      fromQueue = false;
     }
+    state.fromQueue = fromQueue;
     state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
 
-    Player.of(context).play(UrlSource(item.url));
+    if (item.url.isNotEmpty) {
+      Player.of(context).play(UrlSource(item.url));
+    } else {
+      Player.sendCommand(
+          context,
+          BroadcastCommand(BroadcastCommandType.needUrl, item.type,
+              {'fromQueue': fromQueue}));
+    }
   }
 
   void _seek(int position) {
@@ -403,8 +419,19 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
   }
 
   @override
-  void onUrlSuccess(String url) {
-    Player.of(context).play(UrlSource(url));
+  void onUrlSuccess(bool fromQueue, MusicInfo item) {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+
+    state.setItem(item);
+    if (!fromQueue) state.replace(item);
+
+    final player = Player.of(context);
+
+    if (player.source != null) {
+      player.play(UrlSource(item.url));
+    } else {
+      player.setSource(UrlSource(item.url));
+    }
   }
 }
 

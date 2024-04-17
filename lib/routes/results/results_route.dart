@@ -55,6 +55,7 @@ class _ResultRouteState extends ResultContract with ResultPresenter {
 
     state.list = widget.items.map((e) => e.info).toList();
     state.index = index;
+    state.fromQueue = false;
     Player.of(context).play(UrlSource(item.url));
   }
 
@@ -63,6 +64,7 @@ class _ResultRouteState extends ResultContract with ResultPresenter {
     state.setItem(items.first);
 
     state.list = items.toList();
+    state.fromQueue = false;
     Player.of(context).play(UrlSource(items.first.url));
   }
 

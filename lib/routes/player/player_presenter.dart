@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:music/data/repository.dart';
+import 'package:music/utils/utils.dart';
 
 import 'player_route.dart';
 
 abstract class PlayerContract extends State<PlayerRoute> {
   void onFavoriteSuccess([int? newId]);
   void onLyricsSuccess(String lyrics);
+  void onUrlSuccess(bool fromQueue, MusicInfo item);
   void onError(String error);
 }
 
@@ -38,6 +40,13 @@ mixin PlayerPresenter on PlayerContract {
     try {
       final r = Repository.vkOf(context);
       onLyricsSuccess(await r.getLyrics(context, id));
+    } catch (e) {}
+  }
+
+  Future<void> getByIdVk(bool fromQueue, String id) async {
+    try {
+      final r = Repository.vkOf(context);
+      onUrlSuccess(fromQueue, (await r.getMusicByIds(context, id)).info);
     } catch (e) {}
   }
 }

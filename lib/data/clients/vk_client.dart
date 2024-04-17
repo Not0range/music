@@ -101,11 +101,14 @@ class VkClient {
     return res.response!.items;
   }
 
-  Future<void> getMusicByIds(BuildContext context, String ids) async {
+  Future<MusicVk> getMusicByIds(BuildContext context, String ids) async {
     final data = (await _dio.get('audio.getById',
             queryParameters: {'access_token': _token(context), 'audios': ids}))
         .data;
-    print(data);
+    final res = ResponseVk.fromJson(
+        data, (e) => (e as List).map((e) => MusicVk.fromJson(e)));
+    if (res.error != null) throw res.error!.message;
+    return res.response!.first;
   }
 
   Future<int> addToFavorite(BuildContext context, int ownerId, int id) async {

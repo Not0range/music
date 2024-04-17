@@ -32,7 +32,7 @@ class PlaylistRoute extends StatefulWidget {
 }
 
 class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
-  late StreamSubscription _subscription;
+  late final StreamSubscription _subscription;
 
   List<IMusic> _items = [];
   bool _loading = true;
@@ -152,6 +152,7 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
       state.list = _items.map((e) => e.info).toList();
     }
     state.index = index;
+    state.fromQueue = false;
     Player.of(context).play(UrlSource(item.url));
   }
 
@@ -164,6 +165,7 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
     }
 
     state.list = items.toList();
+    state.fromQueue = false;
     Player.of(context).play(UrlSource(items.first.url));
   }
 

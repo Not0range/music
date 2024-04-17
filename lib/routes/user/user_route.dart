@@ -85,6 +85,7 @@ class _UserRouteState extends UserContract with UserPresenter {
 
     state.list = _items.map((e) => e.info).toList();
     state.index = index;
+    state.fromQueue = false;
     Player.of(context).play(UrlSource(item.url));
   }
 
@@ -93,6 +94,7 @@ class _UserRouteState extends UserContract with UserPresenter {
     state.setItem(items.first);
 
     state.list = items.toList();
+    state.fromQueue = false;
     Player.of(context).play(UrlSource(items.first.url));
   }
 

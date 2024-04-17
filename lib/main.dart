@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -9,16 +10,18 @@ import 'package:music/data/repository.dart';
 import 'package:music/routes/tabs/tabs_route.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:music/utils/service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'components/player.dart';
 import 'utils/utils.dart';
 
+const _saveTimeout = Duration(seconds: 30);
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final controller = StreamController<ChangePlayableType>.broadcast();
   final prefs = await SharedPreferences.getInstance();
 
   runApp(MultiProvider(providers: [
@@ -26,42 +29,61 @@ Future<void> main() async {
         create: (ctx) => AppModel(
             vkToken: prefs.getString('vk_token'),
             ytToken: prefs.getString('yt_token'))),
-    ChangeNotifierProvider(create: (ctx) => PlayerModel()),
+    ChangeNotifierProvider(create: (ctx) => PlayerModel(controller)),
     ChangeNotifierProvider(create: (ctx) => PlaylistsModel()),
-  ], child: const MainApp()));
+  ], child: MainApp(stream: controller.stream)));
 }
 
 class MainApp extends StatefulWidget {
-  const MainApp({super.key});
+  final Stream<ChangePlayableType> stream;
+
+  const MainApp({super.key, required this.stream});
 
   @override
   State<StatefulWidget> createState() => _MainAppState();
 }
 
 class _MainAppState extends State<MainApp> {
+  Timer? _listTimer;
+  Timer? _sheffleTimer;
+  Timer? _queueTimer;
+
   final _vkClient = VkClient();
   final _ytClient = YtClient();
 
-  final player = AudioPlayer();
+  final _player = AudioPlayer();
   late final StreamSubscription _durationSub;
   late final StreamSubscription _positionSub;
   late final StreamSubscription _stateSub;
   late final StreamSubscription _completeSub;
 
-  final controller = StreamController<BroadcastCommand>.broadcast();
+  final _controller = StreamController<BroadcastCommand>.broadcast();
+  late final StreamSubscription _subscription;
 
   @override
   void initState() {
     super.initState();
+
     AudioPlayer.global.setAudioContext(AudioContext(
         android: const AudioContextAndroid(stayAwake: true),
         iOS: AudioContextIOS()));
 
-    player.positionUpdater = TimerPositionUpdater(
-        getPosition: player.getCurrentPosition,
+    _player.positionUpdater = TimerPositionUpdater(
+        getPosition: _player.getCurrentPosition,
         interval: const Duration(milliseconds: 500));
-    player.setReleaseMode(ReleaseMode.stop);
+    _player.setReleaseMode(ReleaseMode.stop);
+
     Future.delayed(Duration.zero, _listeners);
+  }
+
+  @override
+  void deactivate() {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    if (_listTimer?.isActive ?? false) _saveList(state);
+    if (_queueTimer?.isActive ?? false) _saveQueue(state);
+    if (_sheffleTimer?.isActive ?? false) _saveShuffled(state);
+
+    super.deactivate();
   }
 
   @override
@@ -71,28 +93,38 @@ class _MainAppState extends State<MainApp> {
     _stateSub.cancel();
     _completeSub.cancel();
 
-    player.dispose();
-    controller.close();
+    _player.dispose();
+    _controller.close();
+    _subscription.cancel();
 
     super.dispose();
   }
 
   void _listeners() {
     final state = Provider.of<PlayerModel>(context, listen: false);
-    _durationSub = player.onDurationChanged.listen((d) => state.duration = d);
-    _positionSub = player.onPositionChanged.listen((p) => state.position = p);
-    _stateSub = player.onPlayerStateChanged.listen((s) => state.playing = s ==
+    _initPlayer(state).then((_) {
+      _subscription = widget.stream.listen((c) => _streamListener(state, c));
+    });
+
+    _durationSub = _player.onDurationChanged.listen((d) => state.duration = d);
+    _positionSub = _player.onPositionChanged.listen((p) => state.position = p);
+    _stateSub = _player.onPlayerStateChanged.listen((s) => state.playing = s ==
             PlayerState.playing ||
-        s == PlayerState.completed && player.releaseMode == ReleaseMode.loop);
-    _completeSub = player.onPlayerComplete.listen((_) {
-      if (player.releaseMode == ReleaseMode.loop) return;
+        s == PlayerState.completed && _player.releaseMode == ReleaseMode.loop);
+    _completeSub = _player.onPlayerComplete.listen((_) {
+      if (_player.releaseMode == ReleaseMode.loop) return;
 
       if (state.queue.isNotEmpty) {
         state.fromQueue = true;
         final q = state.enqueue();
         state.setItem(q, favorite: '${q.extra?['favorite'] ?? ''}');
 
-        player.play(UrlSource(q.url));
+        if (q.url.isNotEmpty) {
+          _player.play(UrlSource(q.url));
+        } else {
+          _controller.add(BroadcastCommand(
+              BroadcastCommandType.needUrl, q.type, {'fromQueue': true}));
+        }
         return;
       }
       state.fromQueue = false;
@@ -105,12 +137,117 @@ class _MainAppState extends State<MainApp> {
       final item = (state.shuffled ?? state.list)[i];
       state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
       if (item.url.isNotEmpty) {
-        player.play(UrlSource(item.url));
+        _player.play(UrlSource(item.url));
       } else {
-        controller
-            .add(BroadcastCommand(BroadcastCommandType.needUrl, item.type));
+        _controller.add(BroadcastCommand(
+            BroadcastCommandType.needUrl, item.type, {'fromQueue': false}));
       }
     });
+  }
+
+  void _streamListener(PlayerModel state, ChangePlayableType c) {
+    switch (c) {
+      case ChangePlayableType.list:
+        _listTimer?.cancel();
+        _listTimer = Timer(_saveTimeout, () => _saveList(state));
+        break;
+      case ChangePlayableType.queue:
+        _queueTimer?.cancel();
+        _queueTimer = Timer(_saveTimeout, () => _saveQueue(state));
+        break;
+      case ChangePlayableType.shuffled:
+        _sheffleTimer?.cancel();
+        _sheffleTimer = Timer(_saveTimeout, () => _saveShuffled(state));
+        break;
+      case ChangePlayableType.trackIndex:
+        SharedPreferences.getInstance().then((prefs) async {
+          if (state.index != null) {
+            await prefs.setInt('trackIndex', state.index!);
+          } else {
+            await prefs.remove('trackIndex');
+          }
+        });
+        break;
+    }
+  }
+
+  Future<void> _initPlayer(PlayerModel state) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!prefs.containsKey('player_list')) return;
+
+    final index = prefs.getInt('trackIndex') ?? 0;
+    final queue = prefs
+            .getStringList('player_queue')
+            ?.map((e) => MusicInfo.fromJson(jsonDecode(e)))
+            .toList() ??
+        [];
+    final fromQueue = queue.isNotEmpty;
+    final shuffled = prefs
+        .getStringList('player_shuffle')
+        ?.map((e) => MusicInfo.fromJson(jsonDecode(e)))
+        .toList();
+    final list = prefs
+        .getStringList('player_list')!
+        .map((e) => MusicInfo.fromJson(jsonDecode(e)))
+        .toList();
+    final item = queue.isNotEmpty
+        ? queue.removeAt(0)
+        : shuffled != null
+            ? shuffled[index]
+            : list[index];
+
+    state.list = list;
+    state.shuffled = shuffled;
+    state.queue = queue;
+    state.fromQueue = fromQueue;
+    state.index = index;
+    state.setItem(item);
+
+    await Future.delayed(const Duration(seconds: 1));
+    _controller.add(BroadcastCommand(
+        BroadcastCommandType.needUrl, item.type, {'fromQueue': fromQueue}));
+  }
+
+  Future<void> _saveList(PlayerModel state) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+        'player_list', state.list.map((e) => jsonEncode(e.toJson())).toList());
+    await prefs.setInt('trackIndex', state.index ?? 0);
+  }
+
+  Future<void> _saveQueue(PlayerModel state) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (state.queue.isEmpty) {
+      prefs.remove('player_queue');
+      return;
+    }
+    var list = state.queue.map((e) => jsonEncode(e.toJson()));
+    if (state.fromQueue) {
+      list = [
+        jsonEncode({
+          'id': state.id,
+          'artist': state.artist,
+          'title': state.title,
+          'duration': state.duration.inSeconds,
+          'coverSmall': state.img,
+          'coverBig': state.img,
+          'type': state.service!.index
+        })
+      ].followedBy(list);
+    }
+
+    await prefs.setStringList('player_queue', list.toList());
+  }
+
+  Future<void> _saveShuffled(PlayerModel state) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (state.shuffled != null) {
+      await prefs.setStringList('player_shuffle',
+          state.shuffled!.map((e) => jsonEncode(e.toJson())).toList());
+    } else {
+      await prefs.remove('player_shuffle');
+    }
+    await prefs.setInt('trackIndex', state.index ?? 0);
   }
 
   @override
@@ -119,8 +256,8 @@ class _MainAppState extends State<MainApp> {
       _vkClient,
       _ytClient,
       child: Player(
-        player,
-        controller,
+        _player,
+        _controller,
         child: MaterialApp(
           title: 'Music',
           theme: ThemeData(

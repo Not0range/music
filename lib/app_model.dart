@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:music/data/models/vk/playlist_vk.dart';
 import 'package:music/data/models/vk/profile_vk.dart';
@@ -45,6 +47,10 @@ class AppModel extends ChangeNotifier {
 }
 
 class PlayerModel extends ChangeNotifier {
+  final StreamController<ChangePlayableType> _controller;
+
+  PlayerModel(this._controller);
+
   Duration _duration = Duration.zero;
   Duration get duration => _duration;
   set duration(Duration value) {
@@ -140,6 +146,7 @@ class PlayerModel extends ChangeNotifier {
     if (_index == value) return;
 
     _index = value;
+    _controller.add(ChangePlayableType.trackIndex);
     notifyListeners();
   }
 
@@ -151,11 +158,18 @@ class PlayerModel extends ChangeNotifier {
     _list = value;
     _shuffled = null;
     _index = 0;
+    _controller.add(ChangePlayableType.list);
     notifyListeners();
   }
 
   List<MusicInfo>? _shuffled;
   List<MusicInfo>? get shuffled => _shuffled;
+  set shuffled(List<MusicInfo>? value) {
+    if (_shuffled == value) return;
+
+    _shuffled = value;
+    notifyListeners();
+  }
 
   set shuffle(bool value) {
     if (value) {
@@ -171,6 +185,7 @@ class PlayerModel extends ChangeNotifier {
       _index = _list.indexOf(_shuffled![_index!]);
       _shuffled = null;
     }
+    _controller.add(ChangePlayableType.shuffled);
     notifyListeners();
   }
 
@@ -180,6 +195,7 @@ class PlayerModel extends ChangeNotifier {
     if (_list == value) return;
 
     _queue = value;
+    _controller.add(ChangePlayableType.queue);
     notifyListeners();
   }
 
@@ -212,6 +228,9 @@ class PlayerModel extends ChangeNotifier {
     list.insert(newIndex, item);
 
     _index = list.indexOf(current);
+    _controller.add(_shuffled != null
+        ? ChangePlayableType.shuffled
+        : ChangePlayableType.list);
     notifyListeners();
   }
 
@@ -222,6 +241,7 @@ class PlayerModel extends ChangeNotifier {
 
     final item = _queue.removeAt(oldIndex);
     _queue.insert(newIndex, item);
+    _controller.add(ChangePlayableType.queue);
 
     notifyListeners();
   }
@@ -246,10 +266,13 @@ class PlayerModel extends ChangeNotifier {
       _artist = items.first.artist;
       _title = items.first.title;
       _img = items.first.coverBig;
+
+      _controller.add(ChangePlayableType.queue);
       notifyListeners();
       return true;
     }
     _queue.insertAll(0, items);
+    _controller.add(ChangePlayableType.queue);
     notifyListeners();
     return false;
   }
@@ -266,16 +289,20 @@ class PlayerModel extends ChangeNotifier {
       _artist = items.first.artist;
       _title = items.first.title;
       _img = items.first.coverBig;
+
+      _controller.add(ChangePlayableType.queue);
       notifyListeners();
       return true;
     }
     _queue.addAll(items);
+    _controller.add(ChangePlayableType.queue);
     notifyListeners();
     return false;
   }
 
   MusicInfo enqueue([int i = 0]) {
     final item = _queue.removeAt(i);
+    _controller.add(ChangePlayableType.queue);
     notifyListeners();
     return item;
   }
@@ -290,6 +317,7 @@ class PlayerModel extends ChangeNotifier {
     if (shuffled != null) {
       shuffle = true;
     } else {
+      _controller.add(ChangePlayableType.list);
       notifyListeners();
     }
   }
@@ -304,6 +332,7 @@ class PlayerModel extends ChangeNotifier {
     if (shuffled != null) {
       shuffle = true;
     } else {
+      _controller.add(ChangePlayableType.list);
       notifyListeners();
     }
   }
@@ -313,17 +342,24 @@ class PlayerModel extends ChangeNotifier {
     list.removeAt(index);
 
     if (_index! > index) _index = _index! - 1;
+    _controller.add(_shuffled != null
+        ? ChangePlayableType.shuffled
+        : ChangePlayableType.list);
     notifyListeners();
   }
 
   void replace(MusicInfo item, [int? index]) {
     final list = _shuffled ?? _list;
     list[index ?? _index!] = item;
+    _controller.add(_shuffled != null
+        ? ChangePlayableType.shuffled
+        : ChangePlayableType.list);
     notifyListeners();
   }
 
   void replaceQueue(MusicInfo item, int index) {
     _queue[index] = item;
+    _controller.add(ChangePlayableType.queue);
     notifyListeners();
   }
 }
