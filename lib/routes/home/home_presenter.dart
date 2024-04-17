@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:music/data/models/vk/music_vk.dart';
 import 'package:music/data/repository.dart';
+import 'package:music/utils/service.dart';
 
 import 'home_route.dart';
 
 abstract class HomeContract extends State<HomeRoute> {
   void onRecommendationsVk(List<MusicVk> result);
   void onPopularVk(List<MusicVk> result);
-  void onFavoriteSuccess();
+  void onFavoriteSuccess(Service service);
 }
 
 mixin HomePresenter on HomeContract {
@@ -29,7 +30,7 @@ mixin HomePresenter on HomeContract {
     try {
       final r = Repository.vkOf(context);
       await r.addToFavorite(context, ownerId, id);
-      onFavoriteSuccess();
+      onFavoriteSuccess(Service.vk);
     } catch (e) {}
   }
 }

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/loading_container.dart';
+import 'package:music/components/player.dart';
 import 'package:music/components/result_category.dart';
 import 'package:music/data/models/vk/music_vk.dart';
 import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
 import 'package:music/utils/styles.dart';
+import 'package:music/utils/utils.dart';
 import 'package:provider/provider.dart';
 
 import 'home_presenter.dart';
@@ -115,8 +117,9 @@ class _HomeRouteState extends HomeContract
   }
 
   @override
-  void onFavoriteSuccess() {
-    // TODO: implement onFavoriteSuccess
+  void onFavoriteSuccess(Service service) {
+    Player.sendCommand(context,
+        BroadcastCommand(BroadcastCommandType.changeFavorites, service));
   }
 
   @override
