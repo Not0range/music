@@ -40,14 +40,23 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
     });
     Future.delayed(Duration.zero, () {
       Player.streamOf(context).listen((cmd) {
-        if (cmd.type == BroadcastCommandType.needUrl) {
-          final id = Provider.of<PlayerModel>(context, listen: false).id!;
-          switch (cmd.service) {
-            case Service.vk:
-              getByIdVk(cmd.params?['fromQueue'] == true, id);
-              break;
-            default:
-          }
+        switch (cmd.type) {
+          case BroadcastCommandType.needUrl:
+            final id = Provider.of<PlayerModel>(context, listen: false).id!;
+            switch (cmd.service) {
+              case Service.vk:
+                getByIdVk(cmd.params?['fromQueue'] == true, id);
+                break;
+              default:
+            }
+            break;
+          case BroadcastCommandType.playPause:
+            _playPause(cmd.params?['playing'] ?? false);
+            break;
+          case BroadcastCommandType.next:
+            _next();
+            break;
+          default:
         }
       });
     });
@@ -103,6 +112,9 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
         PlayerPlaylist(
           topInset: widget.topInset,
           controller: _playlistController,
+          prev: _prev,
+          playPause: _playPause,
+          next: _next,
         ),
       ],
     );

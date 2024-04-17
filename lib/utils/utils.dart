@@ -150,7 +150,9 @@ enum BroadcastCommandType {
   changeFavorites,
   followPlaylist,
   addToPlaylist,
-  needUrl
+  needUrl,
+  playPause,
+  next
 }
 
 enum ChangePlayableType { list, queue, shuffled, trackIndex }

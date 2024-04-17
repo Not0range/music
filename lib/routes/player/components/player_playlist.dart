@@ -16,9 +16,17 @@ import 'package:sliver_tools/sliver_tools.dart';
 class PlayerPlaylist extends StatefulWidget {
   final double topInset;
   final DraggableScrollableController controller;
+  final VoidCallback? prev;
+  final Proc1<bool>? playPause;
+  final VoidCallback? next;
 
   const PlayerPlaylist(
-      {super.key, this.topInset = 0, required this.controller});
+      {super.key,
+      this.topInset = 0,
+      required this.controller,
+      this.prev,
+      this.playPause,
+      this.next});
 
   @override
   State<StatefulWidget> createState() => _PlayerPlaylistState();
@@ -140,6 +148,26 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
                   ],
                 ),
               ),
+              Row(
+                children: [
+                  const Spacer(),
+                  IconButton(
+                      iconSize: playerIconSize,
+                      onPressed: widget.prev,
+                      icon: const Icon(Icons.fast_rewind)),
+                  IconButton(
+                      iconSize: playerIconSize * 2,
+                      onPressed: () => widget.playPause?.call(state.playing),
+                      icon: Icon(state.playing
+                          ? Icons.pause_circle
+                          : Icons.play_circle)),
+                  IconButton(
+                      iconSize: playerIconSize,
+                      onPressed: widget.next,
+                      icon: const Icon(Icons.fast_forward)),
+                  const Spacer(),
+                ],
+              )
             ],
           ),
         ),
@@ -204,7 +232,14 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
 
     state.setItem(item);
     state.index = index;
-    Player.of(context).play(UrlSource(item.url));
+    if (item.url.isNotEmpty) {
+      Player.of(context).play(UrlSource(item.url));
+    } else {
+      Player.sendCommand(
+          context,
+          BroadcastCommand(
+              BroadcastCommandType.needUrl, item.type, {'fromQueue': false}));
+    }
   }
 
   void _playQueue(int index) {
@@ -212,7 +247,14 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
 
     final item = state.enqueue(index);
     state.setItem(item);
-    Player.of(context).play(UrlSource(item.url));
+    if (item.url.isNotEmpty) {
+      Player.of(context).play(UrlSource(item.url));
+    } else {
+      Player.sendCommand(
+          context,
+          BroadcastCommand(
+              BroadcastCommandType.needUrl, item.type, {'fromQueue': true}));
+    }
   }
 
   @override

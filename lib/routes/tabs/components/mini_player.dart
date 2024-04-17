@@ -3,6 +3,7 @@ import 'package:music/app_model.dart';
 import 'package:music/components/net_image.dart';
 import 'package:music/components/player.dart';
 import 'package:music/utils/constants.dart';
+import 'package:music/utils/service.dart';
 import 'package:music/utils/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -26,12 +27,15 @@ class _MiniPlayerState extends State<MiniPlayer> {
   }
 
   void _playPause(bool playing) {
-    final player = Player.of(context);
-    if (!playing) {
-      player.resume();
-    } else {
-      player.pause();
-    }
+    Player.sendCommand(
+        context,
+        BroadcastCommand(BroadcastCommandType.playPause, Service.local,
+            {'playing': playing}));
+  }
+
+  void _next() {
+    Player.sendCommand(
+        context, BroadcastCommand(BroadcastCommandType.next, Service.local));
   }
 
   Widget _builder(BuildContext context, PlayerModel state, Widget? _) {
@@ -70,7 +74,8 @@ class _MiniPlayerState extends State<MiniPlayer> {
               )),
               IconButton(
                   onPressed: () => _playPause(state.playing),
-                  icon: Icon(state.playing ? Icons.pause : Icons.play_arrow))
+                  icon: Icon(state.playing ? Icons.pause : Icons.play_arrow)),
+              IconButton(onPressed: _next, icon: const Icon(Icons.fast_forward))
             ],
           ),
         ),
