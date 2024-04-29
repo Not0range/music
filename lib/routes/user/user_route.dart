@@ -1,4 +1,3 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/loading_container.dart';
@@ -7,6 +6,7 @@ import 'package:music/components/player.dart';
 import 'package:music/data/models/vk/music_vk.dart';
 import 'package:music/data/models/vk/playlist_vk.dart';
 import 'package:music/routes/user/components/playlists_carousel.dart';
+import 'package:music/utils/player_helper.dart';
 import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
 import 'package:music/utils/service_objects.dart';
@@ -86,7 +86,7 @@ class _UserRouteState extends UserContract with UserPresenter {
     state.list = _items.map((e) => e.info).toList();
     state.index = index;
     state.fromQueue = false;
-    Player.of(context).play(UrlSource(item.url));
+    PlayerHelper.instance.play(item.url, item.toJson());
   }
 
   void _playMultiple(Iterable<MusicInfo> items) {
@@ -95,7 +95,9 @@ class _UserRouteState extends UserContract with UserPresenter {
 
     state.list = items.toList();
     state.fromQueue = false;
-    Player.of(context).play(UrlSource(items.first.url));
+
+    final item = items.first;
+    PlayerHelper.instance.play(item.url, item.toJson());
   }
 
   void _addToQueue(Iterable<MusicInfo> items, bool head) {
@@ -107,7 +109,8 @@ class _UserRouteState extends UserContract with UserPresenter {
       start = state.tailQueue(items);
     }
     if (start) {
-      Player.of(context).setSourceUrl(items.first.url);
+      final item = items.first;
+      PlayerHelper.instance.setSource(item.url, item.toJson());
     }
   }
 
@@ -152,6 +155,45 @@ class _UserRouteState extends UserContract with UserPresenter {
   @override
   Widget build(BuildContext context) {
     final locale = AppLocalizations.of(context);
+    final Widget child;
+    if (_loading) {
+      child = Shimmer(
+        gradient: Theme.of(context).brightness == Brightness.light
+            ? shimmerLigth
+            : shimmerDark,
+        child: CustomScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          slivers: [
+            const SliverToBoxAdapter(
+              child: PlaylistsCarousel(
+                items: [],
+                loading: true,
+              ),
+            ),
+            SliverList.builder(itemBuilder: _loadingBuilder),
+          ],
+        ),
+      );
+    } else {
+      child = RefreshIndicator(
+          onRefresh: _load,
+          child: CustomScrollView(
+            physics: _loading ? const NeverScrollableScrollPhysics() : null,
+            slivers: [
+              SliverToBoxAdapter(
+                child: PlaylistsCarousel(
+                  items: _playlists,
+                  onPlay: (i) => _playPlaylist(i.id, PlaylistStartMode.replace),
+                  addToCurrent: (i) =>
+                      _playPlaylist(i.id, PlaylistStartMode.add),
+                  onFollow: _follow,
+                ),
+              ),
+              SliverList.builder(
+                  itemCount: _items.length, itemBuilder: _builder),
+            ],
+          ));
+    }
 
     return PopScope(
       canPop: _selected == null,
@@ -170,32 +212,7 @@ class _UserRouteState extends UserContract with UserPresenter {
                   icon: const Icon(Icons.more_vert)),
           ],
         ),
-        body: Shimmer(
-            gradient: Theme.of(context).brightness == Brightness.light
-                ? shimmerLigth
-                : shimmerDark,
-            child: RefreshIndicator(
-                onRefresh: _load,
-                child: CustomScrollView(
-                  physics:
-                      _loading ? const NeverScrollableScrollPhysics() : null,
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: PlaylistsCarousel(
-                        items: _playlists,
-                        loading: _loading,
-                        onPlay: (i) =>
-                            _playPlaylist(i.id, PlaylistStartMode.replace),
-                        addToCurrent: (i) =>
-                            _playPlaylist(i.id, PlaylistStartMode.add),
-                        onFollow: _follow,
-                      ),
-                    ),
-                    SliverList.builder(
-                        itemCount: _loading ? null : _items.length,
-                        itemBuilder: _loading ? _loadingBuilder : _builder),
-                  ],
-                ))),
+        body: child,
       ),
     );
   }
@@ -250,7 +267,7 @@ class _UserRouteState extends UserContract with UserPresenter {
         final item = items[0];
         state.setItem(item);
         state.index = 0;
-        Player.of(context).play(UrlSource(item.url));
+        PlayerHelper.instance.play(item.url, item.toJson());
         break;
       case PlaylistStartMode.add:
         final empty = state.list.isEmpty;
@@ -259,7 +276,7 @@ class _UserRouteState extends UserContract with UserPresenter {
           final item = items[0];
           state.setItem(item);
           state.index = 0;
-          Player.of(context).setSource(UrlSource(item.url));
+          PlayerHelper.instance.setSource(item.url, item.toJson());
         }
         break;
       case PlaylistStartMode.headQueue:
@@ -273,7 +290,7 @@ class _UserRouteState extends UserContract with UserPresenter {
 
   @override
   void onFollowSuccess(Service service) {
-    Player.sendCommand(context,
+    PlayerCommand.sendCommand(context,
         BroadcastCommand(BroadcastCommandType.followPlaylist, service));
   }
 }

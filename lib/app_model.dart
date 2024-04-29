@@ -51,17 +51,17 @@ class PlayerModel extends ChangeNotifier {
 
   PlayerModel(this._controller);
 
-  Duration _duration = Duration.zero;
-  Duration get duration => _duration;
-  set duration(Duration value) {
+  double _duration = 0;
+  double get duration => _duration;
+  set duration(double value) {
     if (_duration == value) return;
     _duration = value;
     notifyListeners();
   }
 
-  Duration _position = Duration.zero;
-  Duration get position => _position;
-  set position(Duration value) {
+  double _position = 0;
+  double get position => _position;
+  set position(double value) {
     if (_position == value) return;
     _position = value;
     notifyListeners();

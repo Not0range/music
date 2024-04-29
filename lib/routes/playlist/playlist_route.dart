@@ -1,11 +1,12 @@
 import 'dart:async';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/loading_container.dart';
 import 'package:music/components/music_item.dart';
 import 'package:music/components/player.dart';
+import 'package:music/utils/player_helper.dart';
 import 'package:music/utils/routes.dart';
 import 'package:music/utils/service_objects.dart';
 import 'package:music/utils/service.dart';
@@ -51,14 +52,14 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
     Future.delayed(Duration.zero, () {
       _load();
       if (widget.playlist.type == PlaylistType.favorite) {
-        _subscription = Player.streamOf(context).listen((cmd) {
+        _subscription = PlayerCommand.streamOf(context).listen((cmd) {
           if (cmd.type == BroadcastCommandType.changeFavorites &&
               cmd.service == widget.playlist.service) {
             _load();
           }
         });
       } else {
-        _subscription = Player.streamOf(context).listen((cmd) {
+        _subscription = PlayerCommand.streamOf(context).listen((cmd) {
           if (cmd.type == BroadcastCommandType.addToPlaylist &&
               cmd.service == widget.playlist.service &&
               cmd.params?['playlistId'] == widget.playlist.id) {
@@ -133,16 +134,13 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
     _needCommit = true;
   }
 
-  void _play(MusicInfo item, int index) {
+  Future<void> _play(MusicInfo item, int index) async {
     final state = Provider.of<PlayerModel>(context, listen: false);
     if (state.id == item.id && state.service == widget.playlist.service) {
       //TODO open player
       return;
     }
     //TODO if same playlist change current index
-
-    state.setItem(item,
-        favorite: _type == PlaylistType.favorite ? item.id : '');
 
     if (_type == PlaylistType.favorite) {
       state.list = _items
@@ -153,7 +151,15 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
     }
     state.index = index;
     state.fromQueue = false;
-    Player.of(context).play(UrlSource(item.url));
+    state.setItem(item,
+        favorite: _type == PlaylistType.favorite ? item.id : '');
+
+    await PlayerHelper.instance.play(item.url, item.toJson());
+    if (item.coverBig == null) return;
+
+    final file = await DefaultCacheManager().getFileFromCache(item.coverBig!);
+    if (file == null) return;
+    await PlayerHelper.instance.setMetadataCover(file.file.path);
   }
 
   void _playMultiple(Iterable<MusicInfo> items) {
@@ -166,7 +172,9 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
 
     state.list = items.toList();
     state.fromQueue = false;
-    Player.of(context).play(UrlSource(items.first.url));
+
+    final item = items.first;
+    PlayerHelper.instance.play(item.url, item.toJson());
   }
 
   void _addToQueue(Iterable<MusicInfo> items, bool head) {
@@ -182,7 +190,8 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
       start = state.tailQueue(items);
     }
     if (start) {
-      Player.of(context).setSourceUrl(items.first.url);
+      final item = items.first;
+      PlayerHelper.instance.setSource(item.url, item.toJson());
     }
   }
 
@@ -281,9 +290,14 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
 
     final Widget child;
     if (_loading) {
-      child = ListView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          itemBuilder: _loadingBuilder);
+      child = Shimmer(
+        gradient: Theme.of(context).brightness == Brightness.light
+            ? shimmerLigth
+            : shimmerDark,
+        child: ListView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            itemBuilder: _loadingBuilder),
+      );
     } else {
       child = RefreshIndicator(
           onRefresh: _load,
@@ -325,11 +339,7 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
                   icon: const Icon(Icons.more_vert)),
           ],
         ),
-        body: Shimmer(
-            gradient: Theme.of(context).brightness == Brightness.light
-                ? shimmerLigth
-                : shimmerDark,
-            child: child),
+        body: child,
       ),
     );
   }
@@ -343,7 +353,7 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
 
   @override
   void onFavoriteSuccess(Service service, bool added) {
-    Player.sendCommand(context,
+    PlayerCommand.sendCommand(context,
         BroadcastCommand(BroadcastCommandType.changeFavorites, service));
   }
 

@@ -1,91 +1,33 @@
-import 'dart:async';
-
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/net_image.dart';
-import 'package:music/components/player.dart';
 import 'package:music/routes/player/components/progress_bar.dart';
+import 'package:music/routes/player_wrapper/player_wrapper.dart';
+import 'package:music/utils/player_helper.dart';
+import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
 import 'package:music/utils/styles.dart';
-import 'package:music/utils/utils.dart';
 import 'package:provider/provider.dart';
 
-import 'components/player_playlist.dart';
-import 'player_presenter.dart';
-
 class PlayerRoute extends StatefulWidget {
-  final double position;
-  final double topInset;
-  final VoidCallback? onClosed;
+  final EdgeInsets insets;
 
-  const PlayerRoute(
-      {super.key, this.position = 0, this.topInset = 0, this.onClosed});
+  const PlayerRoute({
+    super.key,
+    this.insets = EdgeInsets.zero,
+  });
 
   @override
   State<StatefulWidget> createState() => _PlayerRouteState();
 }
 
-class _PlayerRouteState extends PlayerContract with PlayerPresenter {
-  late final StreamSubscription _subscription;
-
+class _PlayerRouteState extends State<PlayerRoute> {
   final _controller = DraggableScrollableController();
-  final _playlistController = DraggableScrollableController();
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(() {
-      if (_controller.size == 0) widget.onClosed?.call();
-    });
-    Future.delayed(Duration.zero, () {
-      Player.streamOf(context).listen((cmd) {
-        switch (cmd.type) {
-          case BroadcastCommandType.needUrl:
-            final id = Provider.of<PlayerModel>(context, listen: false).id!;
-            switch (cmd.service) {
-              case Service.vk:
-                getByIdVk(cmd.params?['fromQueue'] == true, id);
-                break;
-              default:
-            }
-            break;
-          case BroadcastCommandType.playPause:
-            _playPause(cmd.params?['playing'] ?? false);
-            break;
-          case BroadcastCommandType.next:
-            _next();
-            break;
-          default:
-        }
-      });
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant PlayerRoute oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _scrollListener(widget.position);
-  }
 
   @override
   void dispose() {
-    _subscription.cancel();
     _controller.dispose();
-    _playlistController.dispose();
     super.dispose();
-  }
-
-  void _scrollListener(double position) {
-    if (!_controller.isAttached) return;
-
-    final f = _controller.pixelsToSize(position).clamp(0, 1).toDouble();
-    if (position <= 0 || position.isInfinite) {
-      _controller.animateTo(f,
-          duration: const Duration(milliseconds: 200), curve: Curves.linear);
-    } else {
-      _controller.jumpTo(f);
-    }
   }
 
   Widget _builder(BuildContext context, ScrollController controller) {
@@ -98,7 +40,7 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
               boxShadow: const [BoxShadow(blurRadius: 5)]),
           child: Column(
             children: [
-              SizedBox(height: widget.topInset),
+              SizedBox(height: widget.insets.top),
               _topPanel(),
               Expanded(
                 child: SingleChildScrollView(
@@ -109,13 +51,6 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
             ],
           ),
         ),
-        PlayerPlaylist(
-          topInset: widget.topInset,
-          controller: _playlistController,
-          prev: _prev,
-          playPause: _playPause,
-          next: _next,
-        ),
       ],
     );
   }
@@ -123,10 +58,9 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
   Widget _consumerBuilder(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
 
-    final state = Provider.of<PlayerModel>(context,
-        listen: _controller.isAttached && _controller.size > 0);
-    final p = state.position.inSeconds;
-    final d = state.duration.inSeconds;
+    final state = Provider.of<PlayerModel>(context);
+    final p = state.position;
+    final d = state.duration;
 
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -193,9 +127,8 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
               icon: const Icon(Icons.reply)),
           IconButton(
               iconSize: playerIconSize / 1.5,
-              onPressed: () => _playlistController.animateTo(1,
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.linear),
+              onPressed: () => showPlayerPlaylist(context, widget.insets,
+                  onPrev: _prev, onNext: _next, onPlayPause: _playPause),
               icon: const Icon(Icons.playlist_play))
         ],
       ),
@@ -209,7 +142,7 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
         IconButton(
             iconSize: playerIconSize,
             color: state.shuffled != null ? color : null,
-            onPressed: () => _toggleShuffle(state),
+            onPressed: _toggleShuffle,
             icon: const Icon(Icons.shuffle)),
         IconButton(
             iconSize: playerIconSize,
@@ -226,7 +159,7 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
         IconButton(
             iconSize: playerIconSize,
             color: state.repeat ? color : null,
-            onPressed: () => _toggleRepeat(state),
+            onPressed: _toggleRepeat,
             icon: const Icon(Icons.repeat)),
       ],
     );
@@ -278,11 +211,13 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
       children: [
         IconButton(
             iconSize: playerIconSize,
-            onPressed: () => _scrollListener(0),
+            onPressed: () => _controller.animateTo(0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.linear),
             icon: const Icon(Icons.expand_more)),
         IconButton(
             iconSize: playerIconSize,
-            onPressed: () => _scrollListener(0),
+            onPressed: () {},
             icon: const Icon(Icons.more_vert)),
       ],
     );
@@ -292,159 +227,40 @@ class _PlayerRouteState extends PlayerContract with PlayerPresenter {
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
         controller: _controller,
-        initialChildSize: 0,
-        minChildSize: 0,
+        initialChildSize: 1,
+        minChildSize: 0.7,
         expand: false,
         snap: true,
-        shouldCloseOnMinExtent: false,
         builder: _builder);
   }
 
   void _toggleFavorite(Service? service, FavoriteType favorite, String? id) {
     if (id == null) return;
 
-    if (service == Service.vk) {
-      final ids = id.split('_').map((e) => int.parse(e)).toList();
-      if (favorite == FavoriteType.include) {
-        final id = Provider.of<AppModel>(context, listen: false).vkProfile?.id;
-        if (id != null) removeVk(id, ids[1]);
-      } else if (favorite == FavoriteType.exclude) {
-        addVk(ids[0], ids[1]);
-      } else {
-        restoreVk(ids[0], ids[1]);
-      }
-    }
+    PlayerWrapper.of(context).toggleFavorite(service, favorite, id);
   }
 
   void _playPause(bool playing) {
-    final player = Player.of(context);
-    if (!playing) {
-      player.resume();
-    } else {
-      player.pause();
-    }
+    PlayerWrapper.of(context).playPause(playing);
   }
 
   void _prev() {
-    final state = Provider.of<PlayerModel>(context, listen: false);
-    if (state.index == null) return;
-
-    var i = state.index! - 1;
-    if (i < 0) i = state.list.length - 1;
-
-    state.index = i;
-    final item = (state.shuffled ?? state.list)[i];
-    state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
-
-    if (item.url.isNotEmpty) {
-      Player.of(context).play(UrlSource(item.url));
-    } else {
-      Player.sendCommand(
-          context,
-          BroadcastCommand(
-              BroadcastCommandType.needUrl, item.type, {'fromQueue': false}));
-    }
+    PlayerWrapper.of(context).prev();
   }
 
   void _next() {
-    final state = Provider.of<PlayerModel>(context, listen: false);
-
-    if (state.index != null) {
-      var i = state.index! + 1;
-      if (i >= state.list.length) i = 0;
-
-      state.index = i;
-    }
-
-    final MusicInfo item;
-    final bool fromQueue;
-    if (state.queue.isNotEmpty) {
-      item = state.enqueue();
-      fromQueue = true;
-    } else {
-      if (state.index == null) return;
-      item = (state.shuffled ?? state.list)[state.index!];
-      fromQueue = false;
-    }
-    state.fromQueue = fromQueue;
-    state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
-
-    if (item.url.isNotEmpty) {
-      Player.of(context).play(UrlSource(item.url));
-    } else {
-      Player.sendCommand(
-          context,
-          BroadcastCommand(BroadcastCommandType.needUrl, item.type,
-              {'fromQueue': fromQueue}));
-    }
+    PlayerWrapper.of(context).next();
   }
 
-  void _seek(int position) {
-    Player.of(context).seek(Duration(seconds: position));
+  void _seek(double position) {
+    PlayerHelper.instance.seek(position);
   }
 
-  void _toggleShuffle(PlayerModel state) {
-    if (state.list.isEmpty) return;
-    state.shuffle = state.shuffled == null;
+  void _toggleShuffle() {
+    PlayerWrapper.of(context).toggleShuffle();
   }
 
-  void _toggleRepeat(PlayerModel state) {
-    state.repeat = !state.repeat;
-    final player = Player.of(context);
-    if (state.repeat) {
-      player.setReleaseMode(ReleaseMode.loop);
-    } else {
-      player.setReleaseMode(ReleaseMode.stop);
-    }
-  }
-
-  @override
-  void onFavoriteSuccess([int? newId]) {
-    final state = Provider.of<PlayerModel>(context, listen: false);
-    final String favorite;
-
-    if (newId != null) {
-      final owner = Provider.of<AppModel>(context, listen: false).vkProfile!.id;
-      favorite = '${owner}_$newId';
-    } else {
-      if (state.favorite == state.id) {
-        favorite = 'restore';
-      } else {
-        favorite = '';
-      }
-    }
-    state.favorite = favorite;
-    if (!state.fromQueue) {
-      state.replace((state.shuffled ?? state.list)[state.index!]
-          .copyWith(extra: {'favorite': favorite}));
-    }
-  }
-
-  @override
-  void onLyricsSuccess(String lyrics) {
-    // TODO: implement onLyricsSuccess
-  }
-
-  @override
-  void onError(String error) {
-    // TODO: implement onError
-  }
-
-  @override
-  void onUrlSuccess(bool fromQueue, MusicInfo item) {
-    final state = Provider.of<PlayerModel>(context, listen: false);
-
-    state.setItem(item);
-    if (!fromQueue) state.replace(item);
-
-    final player = Player.of(context);
-
-    if (player.source != null) {
-      player.play(UrlSource(item.url));
-    } else {
-      player.setSource(UrlSource(item.url));
-    }
+  void _toggleRepeat() {
+    PlayerWrapper.of(context).toggleRepeat();
   }
 }
-
-enum FavoriteType { include, exclude, restore }

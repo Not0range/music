@@ -1,14 +1,13 @@
 import 'dart:math' as math;
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/loading_container.dart';
 import 'package:music/components/net_image.dart';
-import 'package:music/components/player.dart';
 import 'package:music/components/playing_icon.dart';
 import 'package:music/components/playlist_item.dart';
 import 'package:music/utils/constants.dart';
+import 'package:music/utils/player_helper.dart';
 import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
 import 'package:music/utils/service_objects.dart';
@@ -56,7 +55,7 @@ class ResultCategory extends StatelessWidget {
 
     state.list = items.map((e) => e.info).toList();
     state.index = index;
-    Player.of(context).play(UrlSource(item.url));
+    PlayerHelper.instance.play(item.url, item.toJson());
   }
 
   void _addToQueue(BuildContext context, Iterable<MusicInfo> items, bool head) {
@@ -68,7 +67,8 @@ class ResultCategory extends StatelessWidget {
       start = state.tailQueue(items);
     }
     if (start) {
-      Player.of(context).setSourceUrl(items.first.url);
+      final item = items.first;
+      PlayerHelper.instance.setSource(item.url, item.toJson());
     }
   }
 
@@ -176,7 +176,7 @@ class ResultCategory extends StatelessWidget {
       final item = i.first;
       state.setItem(item);
       state.index = 0;
-      Player.of(context).setSource(UrlSource(item.url));
+      PlayerHelper.instance.setSource(item.url, item.toJson());
     }
   }
 

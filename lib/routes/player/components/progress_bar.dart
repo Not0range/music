@@ -4,13 +4,13 @@ import 'package:music/utils/styles.dart';
 ///Полоса прогресса воспроизведения
 class ProgressBar extends StatefulWidget {
   ///Продолжительность в секундах
-  final int max;
+  final double max;
 
   ///Текущее значение в секундах
-  final int value;
+  final double value;
 
   ///Действие для перемотки плеера
-  final void Function(int)? onSeeking;
+  final void Function(double)? onSeeking;
 
   const ProgressBar({
     super.key,
@@ -25,13 +25,13 @@ class ProgressBar extends StatefulWidget {
 
 class _ProgressBarState extends State<ProgressBar> {
   ///Значение в секундах текущего положения ползунка
-  int? _value;
-  int? _start;
+  double? _value;
+  double? _start;
 
   bool _active = false;
 
   ///Получить время в секундах по позиции нажатия на полосу прогресса
-  int _getRelative(BuildContext context, Offset position) {
+  double _getRelative(BuildContext context, Offset position) {
     final box = context.findRenderObject() as RenderBox;
     final value = (position.dx / box.size.width * widget.max).floor();
     if (value < 0) {
@@ -40,7 +40,7 @@ class _ProgressBarState extends State<ProgressBar> {
       return widget.max;
     }
 
-    return (position.dx / box.size.width * widget.max).floor();
+    return position.dx / box.size.width * widget.max;
   }
 
   ///Выполнить перемотку плеера
@@ -131,8 +131,8 @@ class _ProgressBarState extends State<ProgressBar> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(msLabel(_value ?? widget.value)),
-                    Text(msLabel(widget.max)),
+                    Text(msLabel((_value ?? widget.value).toInt())),
+                    Text(msLabel((widget.max).toInt())),
                   ],
                 ),
               )

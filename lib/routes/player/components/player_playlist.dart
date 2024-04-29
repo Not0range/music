@@ -1,11 +1,11 @@
 import 'dart:ui';
 import 'dart:math' as math;
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/music_item.dart';
 import 'package:music/components/player.dart';
+import 'package:music/utils/player_helper.dart';
 import 'package:music/utils/service.dart';
 import 'package:music/utils/styles.dart';
 import 'package:music/utils/utils.dart';
@@ -14,47 +14,34 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:sliver_tools/sliver_tools.dart';
 
 class PlayerPlaylist extends StatefulWidget {
-  final double topInset;
-  final DraggableScrollableController controller;
   final VoidCallback? prev;
   final Proc1<bool>? playPause;
   final VoidCallback? next;
+  final EdgeInsets insets;
 
   const PlayerPlaylist(
       {super.key,
-      this.topInset = 0,
-      required this.controller,
       this.prev,
       this.playPause,
-      this.next});
+      this.next,
+      this.insets = EdgeInsets.zero});
 
   @override
   State<StatefulWidget> createState() => _PlayerPlaylistState();
 }
 
 class _PlayerPlaylistState extends State<PlayerPlaylist> {
-  bool _openned = false;
+  final _controller = DraggableScrollableController();
 
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(_listener);
   }
 
   @override
   void dispose() {
-    widget.controller.removeListener(_listener);
+    _controller.dispose();
     super.dispose();
-  }
-
-  void _listener() {
-    if (!widget.controller.isAttached) return;
-
-    if (_openned && widget.controller.size > 0) {
-      setState(() => _openned = true);
-    } else if (!_openned && widget.controller.size <= 0) {
-      setState(() => _openned = false);
-    }
   }
 
   Widget _builder(BuildContext context, ScrollController controller) {
@@ -74,10 +61,10 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: widget.topInset),
+              SizedBox(height: widget.insets.top),
               IconButton(
                   iconSize: playerIconSize,
-                  onPressed: () => widget.controller.animateTo(0,
+                  onPressed: () => _controller.animateTo(0,
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.linear),
                   icon: const Icon(Icons.close)),
@@ -167,7 +154,8 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
                       icon: const Icon(Icons.fast_forward)),
                   const Spacer(),
                 ],
-              )
+              ),
+              SizedBox(height: widget.insets.bottom)
             ],
           ),
         ),
@@ -233,9 +221,9 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
     state.setItem(item);
     state.index = index;
     if (item.url.isNotEmpty) {
-      Player.of(context).play(UrlSource(item.url));
+      PlayerHelper.instance.play(item.url, item.toJson());
     } else {
-      Player.sendCommand(
+      PlayerCommand.sendCommand(
           context,
           BroadcastCommand(
               BroadcastCommandType.needUrl, item.type, {'fromQueue': false}));
@@ -248,9 +236,9 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
     final item = state.enqueue(index);
     state.setItem(item);
     if (item.url.isNotEmpty) {
-      Player.of(context).play(UrlSource(item.url));
+      PlayerHelper.instance.play(item.url, item.toJson());
     } else {
-      Player.sendCommand(
+      PlayerCommand.sendCommand(
           context,
           BroadcastCommand(
               BroadcastCommandType.needUrl, item.type, {'fromQueue': true}));
@@ -260,10 +248,9 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-        controller: widget.controller,
-        initialChildSize: 0,
-        minChildSize: 0,
-        shouldCloseOnMinExtent: false,
+        controller: _controller,
+        initialChildSize: 1,
+        minChildSize: 0.5,
         expand: false,
         snap: true,
         builder: _builder);

@@ -1,19 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/data/clients/vk_client.dart';
 import 'package:music/data/clients/yt_client.dart';
 import 'package:music/data/repository.dart';
-import 'package:music/routes/tabs/tabs_route.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:music/routes/player_wrapper/player_wrapper.dart';
+import 'package:music/utils/player_helper.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'components/player.dart';
+import 'routes/tabs/tabs_route.dart';
 import 'utils/utils.dart';
 
 const _saveTimeout = Duration(seconds: 30);
@@ -51,7 +52,6 @@ class _MainAppState extends State<MainApp> {
   final _vkClient = VkClient();
   final _ytClient = YtClient();
 
-  final _player = AudioPlayer();
   late final StreamSubscription _durationSub;
   late final StreamSubscription _positionSub;
   late final StreamSubscription _stateSub;
@@ -63,16 +63,6 @@ class _MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
-
-    AudioPlayer.global.setAudioContext(AudioContext(
-        android: const AudioContextAndroid(stayAwake: true),
-        iOS: AudioContextIOS()));
-
-    _player.positionUpdater = TimerPositionUpdater(
-        getPosition: _player.getCurrentPosition,
-        interval: const Duration(milliseconds: 500));
-    _player.setReleaseMode(ReleaseMode.stop);
-
     Future.delayed(Duration.zero, _listeners);
   }
 
@@ -93,7 +83,6 @@ class _MainAppState extends State<MainApp> {
     _stateSub.cancel();
     _completeSub.cancel();
 
-    _player.dispose();
     _controller.close();
     _subscription.cancel();
 
@@ -106,21 +95,20 @@ class _MainAppState extends State<MainApp> {
       _subscription = widget.stream.listen((c) => _streamListener(state, c));
     });
 
-    _durationSub = _player.onDurationChanged.listen((d) => state.duration = d);
-    _positionSub = _player.onPositionChanged.listen((p) => state.position = p);
-    _stateSub = _player.onPlayerStateChanged.listen((s) => state.playing = s ==
-            PlayerState.playing ||
-        s == PlayerState.completed && _player.releaseMode == ReleaseMode.loop);
-    _completeSub = _player.onPlayerComplete.listen((_) {
-      if (_player.releaseMode == ReleaseMode.loop) return;
-
+    _durationSub =
+        PlayerHelper.instance.durationStream.listen((d) => state.duration = d);
+    _positionSub =
+        PlayerHelper.instance.positionStream.listen((p) => state.position = p);
+    _stateSub =
+        PlayerHelper.instance.stateStream.listen((s) => state.playing = s);
+    _completeSub = PlayerHelper.instance.completionStream.listen((_) {
       if (state.queue.isNotEmpty) {
         state.fromQueue = true;
         final q = state.enqueue();
         state.setItem(q, favorite: '${q.extra?['favorite'] ?? ''}');
 
         if (q.url.isNotEmpty) {
-          _player.play(UrlSource(q.url));
+          PlayerHelper.instance.play(q.url, q.toJson());
         } else {
           _controller.add(BroadcastCommand(
               BroadcastCommandType.needUrl, q.type, {'fromQueue': true}));
@@ -136,8 +124,9 @@ class _MainAppState extends State<MainApp> {
       state.index = i;
       final item = (state.shuffled ?? state.list)[i];
       state.setItem(item, favorite: '${item.extra?['favorite'] ?? ''}');
+
       if (item.url.isNotEmpty) {
-        _player.play(UrlSource(item.url));
+        PlayerHelper.instance.play(item.url, item.toJson());
       } else {
         _controller.add(BroadcastCommand(
             BroadcastCommandType.needUrl, item.type, {'fromQueue': false}));
@@ -228,7 +217,7 @@ class _MainAppState extends State<MainApp> {
           'id': state.id,
           'artist': state.artist,
           'title': state.title,
-          'duration': state.duration.inSeconds,
+          'duration': state.duration,
           'coverSmall': state.img,
           'coverBig': state.img,
           'type': state.service!.index
@@ -255,25 +244,26 @@ class _MainAppState extends State<MainApp> {
     return Repository(
       _vkClient,
       _ytClient,
-      child: Player(
-        _player,
+      child: PlayerCommand(
         _controller,
-        child: MaterialApp(
-          title: 'Music',
-          theme: ThemeData(
-            appBarTheme: const AppBarTheme(centerTitle: false),
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-            useMaterial3: true,
-          ),
-          darkTheme: ThemeData(
+        child: PlayerWrapper(
+          child: MaterialApp(
+            title: 'Music',
+            theme: ThemeData(
               appBarTheme: const AppBarTheme(centerTitle: false),
-              colorScheme: ColorScheme.fromSeed(
-                  seedColor: Colors.deepPurple, brightness: Brightness.dark),
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
               useMaterial3: true,
-              brightness: Brightness.dark),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const TabsRoute(),
+            ),
+            darkTheme: ThemeData(
+                appBarTheme: const AppBarTheme(centerTitle: false),
+                colorScheme: ColorScheme.fromSeed(
+                    seedColor: Colors.deepPurple, brightness: Brightness.dark),
+                useMaterial3: true,
+                brightness: Brightness.dark),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const TabsRoute(),
+          ),
         ),
       ),
     );

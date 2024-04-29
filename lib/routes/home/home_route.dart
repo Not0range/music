@@ -60,9 +60,14 @@ class _HomeRouteState extends HomeContract
     super.build(context);
     final Widget child;
     if (_loading) {
-      child = ListView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          itemBuilder: _loadingBuilder);
+      child = Shimmer(
+        gradient: Theme.of(context).brightness == Brightness.light
+            ? shimmerLigth
+            : shimmerDark,
+        child: ListView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            itemBuilder: _loadingBuilder),
+      );
     } else {
       child = RefreshIndicator(
         onRefresh: _load,
@@ -94,11 +99,7 @@ class _HomeRouteState extends HomeContract
               icon: const Icon(Icons.settings))
         ],
       ),
-      body: Shimmer(
-          gradient: Theme.of(context).brightness == Brightness.light
-              ? shimmerLigth
-              : shimmerDark,
-          child: child),
+      body: child,
     );
   }
 
@@ -118,7 +119,7 @@ class _HomeRouteState extends HomeContract
 
   @override
   void onFavoriteSuccess(Service service) {
-    Player.sendCommand(context,
+    PlayerCommand.sendCommand(context,
         BroadcastCommand(BroadcastCommandType.changeFavorites, service));
   }
 

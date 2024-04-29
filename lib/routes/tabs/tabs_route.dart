@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/dismiss_container.dart';
-import 'package:music/components/loading_container.dart';
 import 'package:music/data/models/vk/profile_vk.dart';
 import 'package:music/routes/home/home_route.dart';
 import 'package:music/routes/media/media_route.dart';
@@ -9,7 +8,6 @@ import 'package:music/routes/search/search_route.dart';
 import 'package:music/routes/subscriptions/subscriptions_route.dart';
 import 'package:music/routes/tabs/components/bottom_bar_player.dart';
 import 'package:music/utils/routes.dart';
-import 'package:music/utils/styles.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -58,7 +56,7 @@ class _TabsRouteState extends TabsContract
         child: Scaffold(
           resizeToAvoidBottomInset: false,
           bottomNavigationBar: BottomBarPlayer(
-            topInset: MediaQuery.paddingOf(context).top,
+            insets: MediaQuery.paddingOf(context),
             controller: _controller,
             onTabChanged: _popToRoot,
           ),
@@ -180,23 +178,18 @@ class _LibraryRouteState extends State<LibraryRoute>
               icon: const Icon(Icons.settings))
         ],
       ),
-      body: Shimmer(
-        gradient: Theme.of(context).brightness == Brightness.light
-            ? shimmerLigth
-            : shimmerDark,
-        child: TabBarView(controller: _controller, children: [
-          MediaRoute(
-            vk: _vk,
-            youtube: _youtube,
-          ),
-          SubscriptionsRoute(
-            vk: _vk,
-            vkFriends: _vkFriends,
-            vkGroups: _vkGroups,
-            youtube: _youtube,
-          )
-        ]),
-      ),
+      body: TabBarView(controller: _controller, children: [
+        MediaRoute(
+          vk: _vk,
+          youtube: _youtube,
+        ),
+        SubscriptionsRoute(
+          vk: _vk,
+          vkFriends: _vkFriends,
+          vkGroups: _vkGroups,
+          youtube: _youtube,
+        )
+      ]),
     );
   }
 }

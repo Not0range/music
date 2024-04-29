@@ -119,9 +119,14 @@ class _SearchRouteState extends SearchContract
 
     final Widget child;
     if (_loading) {
-      child = ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        children: [ResultCategory.loading(), ResultCategory.loading()],
+      child = Shimmer(
+        gradient: Theme.of(context).brightness == Brightness.light
+            ? shimmerLigth
+            : shimmerDark,
+        child: ListView(
+          physics: const NeverScrollableScrollPhysics(),
+          children: [ResultCategory.loading(), ResultCategory.loading()],
+        ),
       );
     } else if (_vk || _youtube) {
       child = ListView(
@@ -165,12 +170,7 @@ class _SearchRouteState extends SearchContract
             onChanged: _search,
             openFilter: _filterDialog,
           )),
-      body: Shimmer(
-        gradient: Theme.of(context).brightness == Brightness.light
-            ? shimmerLigth
-            : shimmerDark,
-        child: child,
-      ),
+      body: child,
     );
   }
 

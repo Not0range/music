@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
+import 'package:music/components/loading_container.dart';
 import 'package:music/components/player.dart';
 import 'package:music/components/playlist_item.dart';
 import 'package:music/data/models/vk/playlist_vk.dart';
 import 'package:music/utils/service.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:music/utils/styles.dart';
 import 'package:music/utils/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -81,6 +83,23 @@ class _AddToPlaylistRouteWrapperState extends AddToPlaylistContract
   }
 
   Widget _builder(BuildContext context, ScrollController controller) {
+    final Widget child;
+    if (widget.items != null) {
+      child = ListView.builder(
+          controller: controller,
+          itemCount: widget.items?.length,
+          itemBuilder: _itemBuilder);
+    } else {
+      child = Shimmer(
+        gradient: Theme.of(context).brightness == Brightness.light
+            ? shimmerLigth
+            : shimmerDark,
+        child: ListView.builder(
+            controller: controller,
+            itemCount: widget.items?.length,
+            itemBuilder: _loadingBuilder),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -90,10 +109,7 @@ class _AddToPlaylistRouteWrapperState extends AddToPlaylistContract
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh))
         ],
       ),
-      body: ListView.builder(
-          controller: controller,
-          itemCount: widget.items?.length,
-          itemBuilder: widget.items != null ? _itemBuilder : _loadingBuilder),
+      body: child,
     );
   }
 
@@ -138,7 +154,7 @@ class _AddToPlaylistRouteWrapperState extends AddToPlaylistContract
   @override
   void onSuccessAdded(Service service, String playlistId) {
     if (!mounted) return;
-    Player.sendCommand(
+    PlayerCommand.sendCommand(
         context,
         BroadcastCommand(BroadcastCommandType.addToPlaylist, service,
             {'playlistId': playlistId}));

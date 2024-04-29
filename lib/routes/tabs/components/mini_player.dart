@@ -1,46 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/net_image.dart';
-import 'package:music/components/player.dart';
+import 'package:music/routes/player_wrapper/player_wrapper.dart';
 import 'package:music/utils/constants.dart';
-import 'package:music/utils/service.dart';
-import 'package:music/utils/utils.dart';
+import 'package:music/utils/routes.dart';
 import 'package:provider/provider.dart';
 
 const _lastFactor = 200;
 
 class MiniPlayer extends StatefulWidget {
-  final Proc1<double>? onChangePosition;
+  final EdgeInsets insets;
 
-  const MiniPlayer({super.key, this.onChangePosition});
+  const MiniPlayer({super.key, this.insets = EdgeInsets.zero});
 
   @override
   State<StatefulWidget> createState() => _MiniPlayerState();
 }
 
 class _MiniPlayerState extends State<MiniPlayer> {
+  final _controller = DraggableScrollableController();
   double? _start;
   double? _last;
 
-  void _expand() {
-    widget.onChangePosition?.call(double.infinity);
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   void _playPause(bool playing) {
-    Player.sendCommand(
-        context,
-        BroadcastCommand(BroadcastCommandType.playPause, Service.local,
-            {'playing': playing}));
+    PlayerWrapper.of(context).playPause(playing);
   }
 
   void _next() {
-    Player.sendCommand(
-        context, BroadcastCommand(BroadcastCommandType.next, Service.local));
+    PlayerWrapper.of(context).next();
   }
 
   Widget _builder(BuildContext context, PlayerModel state, Widget? _) {
-    final p = state.position.inSeconds;
-    final d = state.duration.inSeconds;
+    final p = state.position;
+    final d = state.duration;
     final f = d > 0 ? p / d : 0.0;
 
     final theme = Theme.of(context);
@@ -96,12 +94,13 @@ class _MiniPlayerState extends State<MiniPlayer> {
     if (_start == null) return;
 
     _last = _start! - details.globalPosition.dy;
-    widget.onChangePosition?.call(_last!);
   }
 
   void _dragEnd([DragEndDetails? details]) {
-    final f = _last == null || _last! < _lastFactor ? 0.0 : double.infinity;
-    widget.onChangePosition?.call(f);
+    if (_last != null && _last! > _lastFactor) {
+      showPlayer(context, widget.insets);
+    }
+
     _start = null;
     _last = null;
   }
@@ -110,7 +109,7 @@ class _MiniPlayerState extends State<MiniPlayer> {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: _expand,
+      onTap: () => showPlayer(context, widget.insets),
       onVerticalDragStart: _dragStart,
       onVerticalDragUpdate: _dragUpdate,
       onVerticalDragEnd: _dragEnd,

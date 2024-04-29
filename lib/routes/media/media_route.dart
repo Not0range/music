@@ -1,16 +1,18 @@
 import 'dart:async';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
+import 'package:music/components/loading_container.dart';
 import 'package:music/components/player.dart';
 import 'package:music/data/models/new_playlist_model.dart';
 import 'package:music/data/models/vk/playlist_vk.dart';
 import 'package:music/components/playlist_item.dart';
 import 'package:music/routes/media/media_presenter.dart';
+import 'package:music/utils/player_helper.dart';
 import 'package:music/utils/service_objects.dart';
 import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
+import 'package:music/utils/styles.dart';
 import 'package:music/utils/utils.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -60,7 +62,7 @@ class _MediaRouteState extends MediaContract
       _load(
           vk: widget.vk && state.vkPlaylists == null,
           youtube: widget.youtube); //TODO check yt playlists
-      _subscription = Player.streamOf(context).listen((cmd) {
+      _subscription = PlayerCommand.streamOf(context).listen((cmd) {
         if (cmd.type == BroadcastCommandType.followPlaylist) {
           switch (cmd.service) {
             case Service.vk:
@@ -151,7 +153,8 @@ class _MediaRouteState extends MediaContract
       start = state.tailQueue(items);
     }
     if (start) {
-      Player.of(context).setSourceUrl(items.first.url);
+      final item = items.first;
+      PlayerHelper.instance.setSource(item.url, item.toJson());
     }
   }
 
@@ -180,10 +183,15 @@ class _MediaRouteState extends MediaContract
   Widget build(BuildContext context) {
     super.build(context);
     if (_loading) {
-      return ListView.builder(
-        padding: const EdgeInsets.only(top: 10),
-        physics: const NeverScrollableScrollPhysics(),
-        itemBuilder: _loadingBuilder,
+      return Shimmer(
+        gradient: Theme.of(context).brightness == Brightness.light
+            ? shimmerLigth
+            : shimmerDark,
+        child: ListView.builder(
+          padding: const EdgeInsets.only(top: 10),
+          physics: const NeverScrollableScrollPhysics(),
+          itemBuilder: _loadingBuilder,
+        ),
       );
     }
 
@@ -290,7 +298,7 @@ class _MediaRouteState extends MediaContract
           final item = items[0];
           state.setItem(item, favorite: favorite ? item.id : '');
           state.index = 0;
-          Player.of(context).setSource(UrlSource(item.url));
+          PlayerHelper.instance.setSource(item.url, item.toJson());
         }
         break;
       case PlaylistStartMode.replace:
@@ -299,7 +307,7 @@ class _MediaRouteState extends MediaContract
         final item = items[0];
         state.setItem(item, favorite: favorite ? item.id : '');
         state.index = 0;
-        Player.of(context).play(UrlSource(item.url));
+        PlayerHelper.instance.play(item.url, item.toJson());
         break;
       case PlaylistStartMode.headQueue:
         _addToQueue(items, true);

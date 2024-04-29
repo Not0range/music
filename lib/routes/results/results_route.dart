@@ -1,8 +1,7 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/music_item.dart';
-import 'package:music/components/player.dart';
+import 'package:music/utils/player_helper.dart';
 import 'package:music/utils/routes.dart';
 import 'package:music/utils/service.dart';
 import 'package:music/utils/utils.dart';
@@ -56,7 +55,7 @@ class _ResultRouteState extends ResultContract with ResultPresenter {
     state.list = widget.items.map((e) => e.info).toList();
     state.index = index;
     state.fromQueue = false;
-    Player.of(context).play(UrlSource(item.url));
+    PlayerHelper.instance.play(item.url, item.toJson());
   }
 
   void _playMultiple(Iterable<MusicInfo> items) {
@@ -65,7 +64,9 @@ class _ResultRouteState extends ResultContract with ResultPresenter {
 
     state.list = items.toList();
     state.fromQueue = false;
-    Player.of(context).play(UrlSource(items.first.url));
+
+    final item = items.first;
+    PlayerHelper.instance.play(item.url, item.toJson());
   }
 
   void _addToQueue(Iterable<MusicInfo> items, bool head) {
@@ -77,7 +78,8 @@ class _ResultRouteState extends ResultContract with ResultPresenter {
       start = state.tailQueue(items);
     }
     if (start) {
-      Player.of(context).setSourceUrl(items.first.url);
+      final item = items.first;
+      PlayerHelper.instance.setSource(item.url, item.toJson());
     }
   }
 

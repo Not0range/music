@@ -4,6 +4,8 @@ import 'package:music/components/main_dialog.dart';
 import 'package:music/components/playlist_context_menu.dart';
 import 'package:music/components/playlist_item.dart';
 import 'package:music/routes/add_to_playlist/add_to_playlist_route.dart';
+import 'package:music/routes/player/components/player_playlist.dart';
+import 'package:music/routes/player/player_route.dart';
 import 'package:music/routes/playlist/playlist_route.dart';
 import 'package:music/routes/results/results_route.dart';
 import 'package:music/routes/settings/settings_route.dart';
@@ -211,4 +213,35 @@ Future<String?> showAddToPlaylistDialog(
       isScrollControlled: true,
       useSafeArea: true,
       builder: (ctx) => AddToPlaylistRoute(id: id, service: service));
+}
+
+Future<void> showPlayerPlaylist(
+  BuildContext context,
+  EdgeInsets insets, {
+  VoidCallback? onPrev,
+  VoidCallback? onNext,
+  Proc1<bool>? onPlayPause,
+}) async {
+  await showModalBottomSheet(
+      context: context,
+      barrierColor: Colors.transparent,
+      backgroundColor: Colors.transparent,
+      clipBehavior: Clip.hardEdge,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      builder: (ctx) => PlayerPlaylist(
+            prev: onPrev,
+            next: onNext,
+            playPause: onPlayPause,
+            insets: insets,
+          ));
+}
+
+Future<void> showPlayer(BuildContext context, EdgeInsets insets) async {
+  await showModalBottomSheet(
+      context: context,
+      clipBehavior: Clip.hardEdge,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      builder: (ctx) => PlayerRoute(insets: insets));
 }
