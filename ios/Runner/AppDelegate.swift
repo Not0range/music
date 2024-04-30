@@ -8,7 +8,11 @@ import Flutter
     public var sink: FlutterEventSink?
     
     private var hlsHandle: HPLUGIN?
-    private var currentStream: HSTREAM?
+    private var currentStream: HSTREAM = 0
+    
+    private var startedSource: String?
+    private var startedMetadata: [String: Any]?
+    private var startedCover: String?
     
     private var positionTimer: Timer?
     private var eventTimer: Timer?
@@ -39,7 +43,7 @@ import Flutter
         
         BASS_SetConfig(DWORD(BASS_CONFIG_IOS_SESSION), DWORD(BASS_IOS_SESSION_DISABLE))
         hlsHandle = BASS_PluginLoad("basshls", 0)
-        initialized = BASS_Init(-1, 44100, 0, nil, nil) == 1
+//        initialized = BASS_Init(-1, 44100, 0, nil, nil) == 1
 
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
@@ -47,8 +51,9 @@ import Flutter
     override func applicationWillTerminate(_ application: UIApplication) {
         //TODO release other items
         positionTimer?.invalidate()
-        if currentStream != nil || currentStream != 0 {
-            BASS_StreamFree(currentStream!)
+        eventTimer?.invalidate()
+        if currentStream != 0 {
+            BASS_StreamFree(currentStream)
         }
         if initialized {
             BASS_Free()
@@ -63,18 +68,49 @@ import Flutter
                 if args == nil {
                     throw ArgumentError()
                 }
+                if currentStream != 0 {
+                    BASS_ChannelFree(currentStream)
+                }
+                
                 let url: String = args!["url"] as! String
-                try setSource(url, metadata: args!["metadata"] as? [String : Any])
+                let metadata = args!["metadata"] as? [String : Any]
+                if !initialized {
+                    startedSource = url
+                    startedMetadata = metadata
+                } else {
+                    try setSource(url, metadata: metadata)
+                    if repeatMode {
+                        result(BASS_ChannelFlags(currentStream, DWORD(BASS_SAMPLE_LOOP), DWORD(BASS_SAMPLE_LOOP)) != -1)
+                    }
+                }
+                result(true)
                 break
             case "play":
                 if args == nil {
                     throw ArgumentError()
                 }
+                if !initialized {
+                    initialized = BASS_Init(-1, 44100, 0, nil, nil) == 1
+                    if !initialized {
+                        throw BassError.bassNotInitialized
+                    }
+                }
+                
+                if currentStream != 0 {
+                    BASS_ChannelFree(currentStream)
+                }
+                
                 let url: String = args!["url"] as! String
-                try setSource(url, metadata: args!["metadata"] as? [String : Any])
+                let metadata = args!["metadata"] as? [String : Any]
+                
+                try setSource(url, metadata: metadata)
+                if repeatMode {
+                    result(BASS_ChannelFlags(currentStream, DWORD(BASS_SAMPLE_LOOP), DWORD(BASS_SAMPLE_LOOP)) != -1)
+                }
+                
                 startAudioSession()
                 
-                if BASS_ChannelStart(currentStream!) == 1 {
+                if BASS_ChannelStart(currentStream) == 1 {
                     setRate(1)
                     finished = false
                     playing = true
@@ -87,7 +123,7 @@ import Flutter
             case "pause":
                 try checkStream()
                 
-                if BASS_ChannelPause(currentStream!) == 1 {
+                if BASS_ChannelPause(currentStream) == 1 {
                     setRate(0)
                     playing = false
                     sink?(["type": 0, "playing": false])
@@ -97,10 +133,30 @@ import Flutter
                 }
                 break
             case "resume":
-                try checkStream()
+                if !initialized {
+                    initialized = BASS_Init(-1, 44100, 0, nil, nil) == 1
+                    if !initialized {
+                        throw BassError.bassNotInitialized
+                    }
+                    if startedSource == nil || startedMetadata == nil {
+                        result(false)
+                        break
+                    }
+                    
+                    try setSource(startedSource!, metadata: startedMetadata!)
+                    if startedCover != nil {
+                        setCover(startedCover!)
+                    }
+                    
+                    if repeatMode {
+                        result(BASS_ChannelFlags(currentStream, DWORD(BASS_SAMPLE_LOOP), DWORD(BASS_SAMPLE_LOOP)) != -1)
+                    }
+                }
                 
+                try checkStream()
                 startAudioSession()
-                if BASS_ChannelStart(currentStream!) == 1 {
+                
+                if BASS_ChannelStart(currentStream) == 1 {
                     setRate(1)
                     finished = false
                     playing = true
@@ -114,8 +170,8 @@ import Flutter
                 try checkStream()
                 
                 let time = args!["position"] as! Double
-                let pos = BASS_ChannelSeconds2Bytes(currentStream!, time)
-                if BASS_ChannelSetPosition(currentStream!, pos, DWORD(BASS_POS_BYTE)) == 1 {
+                let pos = BASS_ChannelSeconds2Bytes(currentStream, time)
+                if BASS_ChannelSetPosition(currentStream, pos, DWORD(BASS_POS_BYTE)) == 1 {
                     let center = MPNowPlayingInfoCenter.default()
                     var metadata = center.nowPlayingInfo
                     if metadata != nil {
@@ -131,33 +187,49 @@ import Flutter
                 if args == nil {
                     throw ArgumentError()
                 }
-                try checkStream()
+                
                 repeatMode = args!["repeat"] as! Bool
+                if !initialized { break }
+                
+                try checkStream()
                 if repeatMode {
-                    result(BASS_ChannelFlags(currentStream!, DWORD(BASS_SAMPLE_LOOP), DWORD(BASS_SAMPLE_LOOP)) != -1)
+                    result(BASS_ChannelFlags(currentStream, DWORD(BASS_SAMPLE_LOOP), DWORD(BASS_SAMPLE_LOOP)) != -1)
                 } else {
-                    result(BASS_ChannelFlags(currentStream!, 0, DWORD(BASS_SAMPLE_LOOP)) != -1)
+                    result(BASS_ChannelFlags(currentStream, 0, DWORD(BASS_SAMPLE_LOOP)) != -1)
                 }
+                result(true)
                 break
             case "setEq":
+                result(true)
                 break
             case "setNowPlayingCover":
                 if args == nil {
                     throw ArgumentError()
                 }
-                let center = MPNowPlayingInfoCenter.default()
-                var metadata = center.nowPlayingInfo
-                
-                if metadata != nil {
-                    guard let image = UIImage(contentsOfFile: args!["path"] as! String) else { return }
-                    metadata![MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-                    metadata![MPNowPlayingInfoPropertyElapsedPlaybackTime] = position
-                    center.nowPlayingInfo = metadata
+                if !initialized {
+                    startedCover = args!["path"] as? String
+                } else {
+                    setCover(args!["path"] as! String)
                 }
                 result(true)
                 break
             case "clearNowPlaying":
                 MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+                result(true)
+            case "setLiked":
+                if args == nil {
+                    throw ArgumentError()
+                }
+                let center = MPRemoteCommandCenter.shared()
+                let liked = args!["bookmark"] as! Bool
+                if liked {
+                    center.dislikeCommand.isActive = false
+                    center.likeCommand.isActive = true
+                } else {
+                    center.likeCommand.isActive = false
+                    center.dislikeCommand.isActive = true
+                }
+                result(true)
             default:
                 result(FlutterMethodNotImplemented)
             }
@@ -170,14 +242,13 @@ import Flutter
             case BassError.operationError:
                 result(FlutterError(code: "3", message: "Operation finished with error", details: nil))
             }
-            
         } catch {
             result(FlutterError(code: "-1", message: "Unknown error", details: nil))
         }
     }
     
     func checkStream() throws {
-        if currentStream == nil || currentStream == 0 {
+        if currentStream == 0 {
             throw BassError.streamNotInitialized
         }
     }
@@ -189,8 +260,8 @@ import Flutter
         
         positionTimer?.invalidate()
         position = 0
-        if currentStream != nil && currentStream != 0 {
-            BASS_ChannelFree(currentStream!)
+        if currentStream != 0 {
+            BASS_ChannelFree(currentStream)
         }
         
         currentStream = BASS_HLS_StreamCreateURL(url, 0, nil, nil)
@@ -198,23 +269,26 @@ import Flutter
             throw BassError.streamNotInitialized
         }
         
-        let len = BASS_ChannelGetLength(currentStream!, DWORD(BASS_POS_BYTE))
+        let center = MPRemoteCommandCenter.shared()
+        let len = BASS_ChannelGetLength(currentStream, DWORD(BASS_POS_BYTE))
         if len != -1 {
             liveStream = false
-            duration = BASS_ChannelBytes2Seconds(currentStream!, len)
+            center.changePlaybackPositionCommand.isEnabled = true
+            duration = BASS_ChannelBytes2Seconds(currentStream, len)
             
             positionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) {[unowned self] timer in
-                let pos = BASS_ChannelGetPosition(currentStream!, DWORD(BASS_POS_BYTE))
-                position = BASS_ChannelBytes2Seconds(currentStream!, pos)
+                let pos = BASS_ChannelGetPosition(currentStream, DWORD(BASS_POS_BYTE))
+                position = BASS_ChannelBytes2Seconds(currentStream, pos)
                 if position >= duration && !repeatMode && !finished {
                     finished = true
-                    BASS_ChannelPause(currentStream!)
-                    BASS_ChannelSetPosition(currentStream!, 0, DWORD(BASS_POS_BYTE))
+                    BASS_ChannelPause(currentStream)
+                    BASS_ChannelSetPosition(currentStream, 0, DWORD(BASS_POS_BYTE))
                     sink?(["type": 3])
                 }
             }
         } else {
             liveStream = true
+            center.changePlaybackPositionCommand.isEnabled = false
             duration = -1
         }
         sink?(["type": 2, "duration": duration])
@@ -255,13 +329,13 @@ import Flutter
     
     func startTimer() {
         positionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) {[unowned self] timer in
-            let pos = BASS_ChannelGetPosition(currentStream!, DWORD(BASS_POS_BYTE))
-            position = BASS_ChannelBytes2Seconds(currentStream!, pos)
+            let pos = BASS_ChannelGetPosition(currentStream, DWORD(BASS_POS_BYTE))
+            position = BASS_ChannelBytes2Seconds(currentStream, pos)
             
             if position >= duration && !repeatMode {
                 timer.invalidate()
                 sink?(["type": 3])
-                BASS_ChannelSetPosition(currentStream!, 0, DWORD(BASS_POS_BYTE))
+                BASS_ChannelSetPosition(currentStream, 0, DWORD(BASS_POS_BYTE))
             }
         }
     }
@@ -274,16 +348,30 @@ import Flutter
         center.nowPlayingInfo = metadata
     }
     
+    func setCover(_ path: String) {
+        let center = MPNowPlayingInfoCenter.default()
+        var metadata = center.nowPlayingInfo
+        
+        if metadata != nil {
+            guard let image = UIImage(contentsOfFile: path) else { return }
+            metadata![MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            metadata![MPNowPlayingInfoPropertyElapsedPlaybackTime] = position
+            center.nowPlayingInfo = metadata
+        }
+    }
+    
     func initCommands() {
         let center = MPRemoteCommandCenter.shared()
         center.likeCommand.addTarget {[unowned self] cmd in
             sink?(["type": 4, "cmd": "bookmark"])
             return .success
         }
+        center.likeCommand.isActive = false
         center.dislikeCommand.addTarget {[unowned self] cmd in
             sink?(["type": 4, "cmd": "bookmark"])
             return .success
         }
+        center.dislikeCommand.isActive = false
         center.playCommand.addTarget {[unowned self] emd in
             if playing { return .success }
             do {
@@ -322,11 +410,22 @@ import Flutter
             sink?(["type": 4, "cmd": "prev"])
             return .success
         }
+        center.changePlaybackPositionCommand.addTarget {[unowned self] cmd in
+            if currentStream == 0 { return .commandFailed }
+            guard let e = cmd as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            
+            let pos = BASS_ChannelSeconds2Bytes(currentStream, e.positionTime)
+            if BASS_ChannelSetPosition(currentStream, pos, DWORD(BASS_POS_BYTE)) == 0 { return .commandFailed }
+            
+            position = e.positionTime
+            sink?(["type": 1, "position": position])
+            return .success
+        }
     }
     
     func play() throws {
         try checkStream()
-        if BASS_ChannelStart(currentStream!) == 1 {
+        if BASS_ChannelStart(currentStream) == 1 {
             finished = false
             playing = true
             sink?(["type": 0, "playing": true])
@@ -337,7 +436,7 @@ import Flutter
     
     func pause() throws {
         try checkStream()
-        if BASS_ChannelPause(currentStream!) == 1 {
+        if BASS_ChannelPause(currentStream) == 1 {
             playing = false
             sink?(["type": 0, "playing": false])
             return
