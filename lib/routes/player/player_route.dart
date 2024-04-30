@@ -5,7 +5,6 @@ import 'package:music/routes/player/components/progress_bar.dart';
 import 'package:music/routes/player_wrapper/player_wrapper.dart';
 import 'package:music/utils/player_helper.dart';
 import 'package:music/utils/routes.dart';
-import 'package:music/utils/service.dart';
 import 'package:music/utils/styles.dart';
 import 'package:provider/provider.dart';
 
@@ -190,14 +189,7 @@ class _PlayerRouteState extends State<PlayerRoute> {
           IconButton(
               iconSize: playerIconSize,
               color: state.favorite.isNotEmpty ? color : null,
-              onPressed: () => _toggleFavorite(
-                  state.service,
-                  state.isFavorite
-                      ? FavoriteType.include
-                      : state.favorite == 'restore'
-                          ? FavoriteType.restore
-                          : FavoriteType.exclude,
-                  state.isFavorite ? state.favorite : state.id),
+              onPressed: _toggleFavorite,
               icon: Icon(
                   state.isFavorite ? Icons.favorite : Icons.favorite_border))
         ],
@@ -234,10 +226,8 @@ class _PlayerRouteState extends State<PlayerRoute> {
         builder: _builder);
   }
 
-  void _toggleFavorite(Service? service, FavoriteType favorite, String? id) {
-    if (id == null) return;
-
-    PlayerWrapper.of(context).toggleFavorite(service, favorite, id);
+  void _toggleFavorite() {
+    PlayerWrapper.of(context).toggleFavorite();
   }
 
   void _playPause(bool playing) {

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/loading_container.dart';
 import 'package:music/components/player.dart';
@@ -155,6 +156,13 @@ class _MediaRouteState extends MediaContract
     if (start) {
       final item = items.first;
       PlayerHelper.instance.setSource(item.url, item.toJson());
+
+      PlayerHelper.instance.setBookmark(false); //TODO check services
+
+      if (item.coverBig == null) return;
+      DefaultCacheManager()
+          .getSingleFile(item.coverBig!)
+          .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
     }
   }
 
@@ -299,6 +307,12 @@ class _MediaRouteState extends MediaContract
           state.setItem(item, favorite: favorite ? item.id : '');
           state.index = 0;
           PlayerHelper.instance.setSource(item.url, item.toJson());
+
+          PlayerHelper.instance.setBookmark(false); //TODO check services
+
+          if (item.coverBig == null) return;
+          DefaultCacheManager().getSingleFile(item.coverBig!).then(
+              (file) => PlayerHelper.instance.setMetadataCover(file.path));
         }
         break;
       case PlaylistStartMode.replace:
@@ -308,6 +322,13 @@ class _MediaRouteState extends MediaContract
         state.setItem(item, favorite: favorite ? item.id : '');
         state.index = 0;
         PlayerHelper.instance.play(item.url, item.toJson());
+
+        PlayerHelper.instance.setBookmark(favorite); //TODO check services
+
+        if (item.coverBig == null) return;
+        DefaultCacheManager()
+            .getSingleFile(item.coverBig!)
+            .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
         break;
       case PlaylistStartMode.headQueue:
         _addToQueue(items, true);

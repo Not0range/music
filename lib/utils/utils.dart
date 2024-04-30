@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -104,7 +105,8 @@ class MusicInfo {
         json['lyrics'] ?? false,
         json['coverSmall'],
         json['coverBig'],
-        Service.values[json['type']]);
+        Service.values[json['type']],
+        extra: jsonDecode(json['extra']));
   }
 
   JsonMap toJson() {
@@ -115,7 +117,8 @@ class MusicInfo {
       'duration': duration,
       'coverSmall': coverSmall,
       'coverBig': coverBig,
-      'type': type.index
+      'type': type.index,
+      'extra': jsonEncode(extra)
     };
   }
 }

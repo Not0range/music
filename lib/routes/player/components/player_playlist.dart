@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/music_item.dart';
 import 'package:music/components/player.dart';
@@ -222,6 +223,15 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
     state.index = index;
     if (item.url.isNotEmpty) {
       PlayerHelper.instance.play(item.url, item.toJson());
+
+      PlayerHelper.instance.setBookmark(
+          item.extra?['favorite']?.toString().isNotEmpty ??
+              false); //TODO check services
+
+      if (item.coverBig == null) return;
+      DefaultCacheManager()
+          .getSingleFile(item.coverBig!)
+          .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
     } else {
       PlayerCommand.sendCommand(
           context,
@@ -250,7 +260,7 @@ class _PlayerPlaylistState extends State<PlayerPlaylist> {
     return DraggableScrollableSheet(
         controller: _controller,
         initialChildSize: 1,
-        minChildSize: 0.5,
+        minChildSize: 0.7,
         expand: false,
         snap: true,
         builder: _builder);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/loading_container.dart';
 import 'package:music/components/music_item.dart';
@@ -87,6 +88,13 @@ class _UserRouteState extends UserContract with UserPresenter {
     state.index = index;
     state.fromQueue = false;
     PlayerHelper.instance.play(item.url, item.toJson());
+
+    PlayerHelper.instance.setBookmark(false); //TODO check services
+
+    if (item.coverBig == null) return;
+    DefaultCacheManager()
+        .getSingleFile(item.coverBig!)
+        .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
   }
 
   void _playMultiple(Iterable<MusicInfo> items) {
@@ -98,6 +106,13 @@ class _UserRouteState extends UserContract with UserPresenter {
 
     final item = items.first;
     PlayerHelper.instance.play(item.url, item.toJson());
+
+    PlayerHelper.instance.setBookmark(false); //TODO check services
+
+    if (item.coverBig == null) return;
+    DefaultCacheManager()
+        .getSingleFile(item.coverBig!)
+        .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
   }
 
   void _addToQueue(Iterable<MusicInfo> items, bool head) {
@@ -111,6 +126,13 @@ class _UserRouteState extends UserContract with UserPresenter {
     if (start) {
       final item = items.first;
       PlayerHelper.instance.setSource(item.url, item.toJson());
+
+      PlayerHelper.instance.setBookmark(false); //TODO check services
+
+      if (item.coverBig == null) return;
+      DefaultCacheManager()
+          .getSingleFile(item.coverBig!)
+          .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
     }
   }
 
@@ -268,6 +290,13 @@ class _UserRouteState extends UserContract with UserPresenter {
         state.setItem(item);
         state.index = 0;
         PlayerHelper.instance.play(item.url, item.toJson());
+
+        PlayerHelper.instance.setBookmark(false); //TODO check services
+
+        if (item.coverBig == null) return;
+        DefaultCacheManager()
+            .getSingleFile(item.coverBig!)
+            .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
         break;
       case PlaylistStartMode.add:
         final empty = state.list.isEmpty;
@@ -277,6 +306,12 @@ class _UserRouteState extends UserContract with UserPresenter {
           state.setItem(item);
           state.index = 0;
           PlayerHelper.instance.setSource(item.url, item.toJson());
+
+          PlayerHelper.instance.setBookmark(false); //TODO check services
+
+          if (item.coverBig == null) return;
+          DefaultCacheManager().getSingleFile(item.coverBig!).then(
+              (file) => PlayerHelper.instance.setMetadataCover(file.path));
         }
         break;
       case PlaylistStartMode.headQueue:

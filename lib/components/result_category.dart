@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/loading_container.dart';
 import 'package:music/components/net_image.dart';
@@ -56,6 +57,13 @@ class ResultCategory extends StatelessWidget {
     state.list = items.map((e) => e.info).toList();
     state.index = index;
     PlayerHelper.instance.play(item.url, item.toJson());
+
+    PlayerHelper.instance.setBookmark(false); //TODO check services
+
+    if (item.coverBig == null) return;
+    DefaultCacheManager()
+        .getSingleFile(item.coverBig!)
+        .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
   }
 
   void _addToQueue(BuildContext context, Iterable<MusicInfo> items, bool head) {
@@ -69,6 +77,13 @@ class ResultCategory extends StatelessWidget {
     if (start) {
       final item = items.first;
       PlayerHelper.instance.setSource(item.url, item.toJson());
+
+      PlayerHelper.instance.setBookmark(false); //TODO check services
+
+      if (item.coverBig == null) return;
+      DefaultCacheManager()
+          .getSingleFile(item.coverBig!)
+          .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
     }
   }
 

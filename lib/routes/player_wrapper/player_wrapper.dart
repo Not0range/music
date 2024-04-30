@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:music/app_model.dart';
 import 'package:music/components/player.dart';
 import 'package:music/utils/player_helper.dart';
@@ -38,7 +39,7 @@ class PlayerWrapperState extends PlayerWrapperContract
         case 'next':
           next();
         case 'bookmark':
-          // toggleFavorite(service, favorite, id);
+          toggleFavorite();
           break;
         case 'shuffle':
           toggleShuffle();
@@ -102,6 +103,13 @@ class PlayerWrapperState extends PlayerWrapperContract
 
     if (item.url.isNotEmpty) {
       PlayerHelper.instance.play(item.url, item.toJson());
+
+      PlayerHelper.instance.setBookmark(false); //TODO check services
+
+      if (item.coverBig == null) return;
+      DefaultCacheManager()
+          .getSingleFile(item.coverBig!)
+          .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
     } else {
       PlayerCommand.sendCommand(
           context,
@@ -135,6 +143,13 @@ class PlayerWrapperState extends PlayerWrapperContract
 
     if (item.url.isNotEmpty) {
       PlayerHelper.instance.play(item.url, item.toJson());
+
+      PlayerHelper.instance.setBookmark(false); //TODO check services
+
+      if (item.coverBig == null) return;
+      DefaultCacheManager()
+          .getSingleFile(item.coverBig!)
+          .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
     } else {
       PlayerCommand.sendCommand(
           context,
@@ -160,7 +175,17 @@ class PlayerWrapperState extends PlayerWrapperContract
     }
   }
 
-  void toggleFavorite(Service? service, FavoriteType favorite, String id) {
+  void toggleFavorite() {
+    final state = Provider.of<PlayerModel>(context, listen: false);
+    final service = state.service;
+    final favorite = state.isFavorite
+        ? FavoriteType.include
+        : state.favorite == 'restore'
+            ? FavoriteType.restore
+            : FavoriteType.exclude;
+    final id = state.isFavorite ? state.favorite : state.id;
+    if (id == null) return;
+
     if (service == Service.vk) {
       final ids = id.split('_').map((e) => int.parse(e)).toList();
       if (favorite == FavoriteType.include) {
@@ -180,25 +205,29 @@ class PlayerWrapperState extends PlayerWrapperContract
   }
 
   @override
-  void onFavoriteSuccess([int? newId]) {
+  void onFavoriteVkSuccess([int? newId]) {
     final state = Provider.of<PlayerModel>(context, listen: false);
     final String favorite;
 
     if (newId != null) {
       final owner = Provider.of<AppModel>(context, listen: false).vkProfile!.id;
       favorite = '${owner}_$newId';
+      PlayerHelper.instance.setBookmark(true);
     } else {
       if (state.favorite == state.id) {
         favorite = 'restore';
       } else {
         favorite = '';
       }
+      PlayerHelper.instance.setBookmark(false);
     }
     state.favorite = favorite;
     if (!state.fromQueue) {
       state.replace((state.shuffled ?? state.list)[state.index!]
           .copyWith(extra: {'favorite': favorite}));
     }
+    PlayerCommand.sendCommand(context,
+        BroadcastCommand(BroadcastCommandType.changeFavorites, Service.vk));
   }
 
   @override
@@ -207,8 +236,11 @@ class PlayerWrapperState extends PlayerWrapperContract
   }
 
   @override
-  void onUrlSuccess(bool fromQueue, MusicInfo item) {
+  void onUrlSuccess(bool fromQueue, String url) {
     final state = Provider.of<PlayerModel>(context, listen: false);
+
+    final item =
+        (state.shuffled ?? state.list)[state.index!].copyWith(url: url);
 
     state.setItem(item);
     if (!fromQueue) state.replace(item);
@@ -219,6 +251,15 @@ class PlayerWrapperState extends PlayerWrapperContract
     } else {
       player.setSource(item.url, item.toJson());
     }
+
+    PlayerHelper.instance.setBookmark(
+        item.extra?['favorite']?.toString().isNotEmpty ??
+            false); //TODO check services
+
+    if (item.coverBig == null) return;
+    DefaultCacheManager()
+        .getSingleFile(item.coverBig!)
+        .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
   }
 }
 

@@ -114,4 +114,8 @@ class PlayerHelper {
   }
 
   Future<void> clearMetadata() async {}
+
+  Future<void> setBookmark(bool bookmark) async {
+    await _channel.invokeMethod('setLiked', {'bookmark': bookmark});
+  }
 }

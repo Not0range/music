@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:music/app_model.dart';
 import 'package:music/data/clients/vk_client.dart';
 import 'package:music/data/clients/yt_client.dart';
@@ -131,6 +132,14 @@ class _MainAppState extends State<MainApp> {
         _controller.add(BroadcastCommand(
             BroadcastCommandType.needUrl, item.type, {'fromQueue': false}));
       }
+
+      PlayerHelper.instance
+          .setBookmark(item.extra?['favorite']?.toString().isNotEmpty ?? false);
+
+      if (item.coverBig == null) return;
+      DefaultCacheManager()
+          .getSingleFile(item.coverBig!)
+          .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
     });
   }
 

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:music/data/repository.dart';
-import 'package:music/utils/utils.dart';
 
 import 'player_wrapper.dart';
 
 abstract class PlayerWrapperContract extends State<PlayerWrapper> {
-  void onFavoriteSuccess([int? newId]);
+  void onFavoriteVkSuccess([int? newId]);
   void onLyricsSuccess(String lyrics);
-  void onUrlSuccess(bool fromQueue, MusicInfo item);
+  void onUrlSuccess(bool fromQueue, String url);
   void onError(String error);
 }
 
@@ -16,7 +15,7 @@ mixin PlayerWrapperPresenter on PlayerWrapperContract {
     try {
       final r = Repository.vkOf(context);
       final newId = await r.addToFavorite(context, ownerId, id);
-      onFavoriteSuccess(newId);
+      onFavoriteVkSuccess(newId);
     } catch (e) {}
   }
 
@@ -24,7 +23,7 @@ mixin PlayerWrapperPresenter on PlayerWrapperContract {
     try {
       final r = Repository.vkOf(context);
       await r.removeFromFavorite(context, ownerId, id);
-      onFavoriteSuccess();
+      onFavoriteVkSuccess();
     } catch (e) {}
   }
 
@@ -32,7 +31,7 @@ mixin PlayerWrapperPresenter on PlayerWrapperContract {
     try {
       final r = Repository.vkOf(context);
       final item = await r.restoreFavorite(context, ownerId, id);
-      onFavoriteSuccess(item.id);
+      onFavoriteVkSuccess(item.id);
     } catch (e) {}
   }
 
@@ -46,7 +45,7 @@ mixin PlayerWrapperPresenter on PlayerWrapperContract {
   Future<void> getByIdVk(bool fromQueue, String id) async {
     try {
       final r = Repository.vkOf(context);
-      onUrlSuccess(fromQueue, (await r.getMusicByIds(context, id)).info);
+      onUrlSuccess(fromQueue, (await r.getMusicByIds(context, id)).url);
     } catch (e) {}
   }
 }

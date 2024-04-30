@@ -155,11 +155,13 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
         favorite: _type == PlaylistType.favorite ? item.id : '');
 
     await PlayerHelper.instance.play(item.url, item.toJson());
-    if (item.coverBig == null) return;
 
-    final file = await DefaultCacheManager().getFileFromCache(item.coverBig!);
-    if (file == null) return;
-    await PlayerHelper.instance.setMetadataCover(file.file.path);
+    PlayerHelper.instance
+        .setBookmark(_type == PlaylistType.favorite); //TODO check services
+
+    if (item.coverBig == null) return;
+    final file = await DefaultCacheManager().getSingleFile(item.coverBig!);
+    await PlayerHelper.instance.setMetadataCover(file.path);
   }
 
   void _playMultiple(Iterable<MusicInfo> items) {
@@ -175,6 +177,14 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
 
     final item = items.first;
     PlayerHelper.instance.play(item.url, item.toJson());
+
+    PlayerHelper.instance
+        .setBookmark(_type == PlaylistType.favorite); //TODO check services
+
+    if (item.coverBig == null) return;
+    DefaultCacheManager()
+        .getSingleFile(item.coverBig!)
+        .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
   }
 
   void _addToQueue(Iterable<MusicInfo> items, bool head) {
@@ -192,6 +202,14 @@ class _PlaylistRouteState extends PlaylistContract with PlaylistPresenter {
     if (start) {
       final item = items.first;
       PlayerHelper.instance.setSource(item.url, item.toJson());
+
+      PlayerHelper.instance
+          .setBookmark(_type == PlaylistType.favorite); //TODO check services
+
+      if (item.coverBig == null) return;
+      DefaultCacheManager()
+          .getSingleFile(item.coverBig!)
+          .then((file) => PlayerHelper.instance.setMetadataCover(file.path));
     }
   }
 
