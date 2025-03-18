@@ -7,7 +7,7 @@ import Flutter
     private var eventChannel: FlutterEventChannel?
     public var sink: FlutterEventSink?
     
-    private var hlsHandle: HPLUGIN?
+    private var hlsHandle: HPLUGIN = 0
     private var currentStream: HSTREAM = 0
     
     private var startedSource: String?
@@ -43,7 +43,6 @@ import Flutter
         
         BASS_SetConfig(DWORD(BASS_CONFIG_IOS_SESSION), DWORD(BASS_IOS_SESSION_DISABLE))
         hlsHandle = BASS_PluginLoad("basshls", 0)
-//        initialized = BASS_Init(-1, 44100, 0, nil, nil) == 1
 
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
@@ -54,6 +53,9 @@ import Flutter
         eventTimer?.invalidate()
         if currentStream != 0 {
             BASS_StreamFree(currentStream)
+        }
+        if hlsHandle != 0 {
+            BASS_PluginFree(hlsHandle)
         }
         if initialized {
             BASS_Free()
@@ -68,9 +70,6 @@ import Flutter
                 if args == nil {
                     throw ArgumentError()
                 }
-                if currentStream != 0 {
-                    BASS_ChannelFree(currentStream)
-                }
                 
                 let url: String = args!["url"] as! String
                 let metadata = args!["metadata"] as? [String : Any]
@@ -80,7 +79,7 @@ import Flutter
                 } else {
                     try setSource(url, metadata: metadata)
                     if repeatMode {
-                        result(BASS_ChannelFlags(currentStream, DWORD(BASS_SAMPLE_LOOP), DWORD(BASS_SAMPLE_LOOP)) != -1)
+                        BASS_ChannelFlags(currentStream, DWORD(BASS_SAMPLE_LOOP), DWORD(BASS_SAMPLE_LOOP))
                     }
                 }
                 result(true)
@@ -94,10 +93,6 @@ import Flutter
                     if !initialized {
                         throw BassError.bassNotInitialized
                     }
-                }
-                
-                if currentStream != 0 {
-                    BASS_ChannelFree(currentStream)
                 }
                 
                 let url: String = args!["url"] as! String
@@ -138,12 +133,12 @@ import Flutter
                     if !initialized {
                         throw BassError.bassNotInitialized
                     }
-                    if startedSource == nil || startedMetadata == nil {
+                    if startedSource == nil {
                         result(false)
                         break
                     }
                     
-                    try setSource(startedSource!, metadata: startedMetadata!)
+                    try setSource(startedSource!, metadata: startedMetadata)
                     if startedCover != nil {
                         setCover(startedCover!)
                     }
@@ -279,11 +274,15 @@ import Flutter
             positionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) {[unowned self] timer in
                 let pos = BASS_ChannelGetPosition(currentStream, DWORD(BASS_POS_BYTE))
                 position = BASS_ChannelBytes2Seconds(currentStream, pos)
-                if position >= duration && !repeatMode && !finished {
-                    finished = true
-                    BASS_ChannelPause(currentStream)
-                    BASS_ChannelSetPosition(currentStream, 0, DWORD(BASS_POS_BYTE))
-                    sink?(["type": 3])
+                if position >= duration  {
+                    if !repeatMode && !finished {
+                        finished = true
+                        BASS_ChannelPause(currentStream)
+                        BASS_ChannelSetPosition(currentStream, 0, DWORD(BASS_POS_BYTE))
+                        sink?(["type": 3])
+                    } else if repeatMode {
+                        MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPNowPlayingInfoPropertyElapsedPlaybackTime] = 0
+                    }
                 }
             }
         } else {
@@ -407,6 +406,13 @@ import Flutter
             return .success
         }
         center.previousTrackCommand.addTarget {[unowned self] cmd in
+            if position >= 5 {
+                if BASS_ChannelSetPosition(currentStream, 0, DWORD(BASS_POS_BYTE)) == 0 { return .commandFailed }
+                MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPNowPlayingInfoPropertyElapsedPlaybackTime] = 0
+                position = 0
+                sink?(["type": 1, "position": 0.0])
+                return .success
+            }
             sink?(["type": 4, "cmd": "prev"])
             return .success
         }

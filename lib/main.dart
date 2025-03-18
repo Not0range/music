@@ -92,7 +92,7 @@ class _MainAppState extends State<MainApp> {
 
   void _listeners() {
     final state = Provider.of<PlayerModel>(context, listen: false);
-    _initPlayer(state).then((_) {
+    _initPlayer(state).whenComplete(() {
       _subscription = widget.stream.listen((c) => _streamListener(state, c));
     });
 
@@ -188,17 +188,18 @@ class _MainAppState extends State<MainApp> {
         .getStringList('player_list')!
         .map((e) => MusicInfo.fromJson(jsonDecode(e)))
         .toList();
-    final item = queue.isNotEmpty
+    final i = shuffled != null ? index % shuffled.length : index % list.length;
+    final item = fromQueue
         ? queue.removeAt(0)
         : shuffled != null
-            ? shuffled[index]
-            : list[index];
+            ? shuffled[i]
+            : list[i];
 
     state.list = list;
     state.shuffled = shuffled;
     state.queue = queue;
     state.fromQueue = fromQueue;
-    state.index = index;
+    state.index = i;
     state.setItem(item);
 
     await Future.delayed(const Duration(seconds: 1));
